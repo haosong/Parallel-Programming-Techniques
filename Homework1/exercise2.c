@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "timing.h"
+#include "dummy.h"
 
 int main() {
     double wcs, wce, ct;
@@ -9,6 +10,8 @@ int main() {
     double *b = calloc(N, sizeof(double));
     double *c = calloc(N, sizeof(double));
     double *d = calloc(N, sizeof(double));
+    printf("\n\t  N\tMFlops\n");
+    printf("--------------------------------\n");
     for (int k = 3; k <= 25; k++) {
         N = (size_t) floor(pow(2.1, k));
         for (size_t i = 0; i < N; i++) {
@@ -26,14 +29,14 @@ int main() {
                 for (size_t i = 0; i < N; i++) {
                     a[i] = b[i] + c[i] * d[i];
                 }
-                if (a[N >> 1] < 0) r += 0; // fools the compiler
+                if (a[N >> 1] < 0) dummy(); // fools the compiler
             }
             timing(&wce, &ct);
             runtime = wce - wcs;
             repeat *= 2;
         }
 	repeat /= 2;
-        printf("%zu\t%i\t%f\t%f\n", N, repeat, runtime, (double) 2 * N * repeat / (runtime * 1000000));
+        printf("%11zu\t%f\n", N, (double) 2 * N * repeat / (runtime * 1000000));
     }
     free(a);
     free(b);
