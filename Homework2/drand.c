@@ -1,8 +1,4 @@
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdio.h>
-
-static uint64_t seed;
+#include "drand.h"
 
 void dsrand(unsigned s)
 {
