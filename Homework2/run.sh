@@ -8,31 +8,31 @@
 
 echo -e "=============== Task 1 ==============="
 
-echo -e "\nRun Serial Program"
+echo -e "\n---- Run Serial Program ----"
 ./scripts/1.sh
 
 echo -e "\n=============== Task 2 ==============="
 
-echo -e "\nRun Program for Threads 1-10"
+echo -e "\n---- Run Program for Threads 1-10 ----"
 ./scripts/2-2.sh
 
-echo -e "\nUse Schedule Option"
+echo -e "\n---- Use Schedule Option ----"
 ./scripts/2-3.sh
 
-echo -e "\nAdd Collapse Clause"
+echo -e "\n---- Add Collapse Clause ----"
 ./scripts/2-4.sh
 
 echo -e "\n=============== Task 3 ==============="
 
-echo -e "\nEach Cell Constitutes A Task"
+echo -e "\n---- Each Cell Constitutes A Task ----"
 ./scripts/3-1.sh
 
-echo -e "\nEach Row Constitutes A Task"
+echo -e "\n---- Each Row Constitutes A Task ----"
 ./scripts/3-2.sh
 
-echo -e "\nTask Creation Shared by All Threads"
+echo -e "\n---- Task Creation Shared by All Threads ----"
 ./scripts/3-3.sh
 
 echo -e "\n=============== Task 4 ==============="
-echo -e "\nParallel Random Number Generation"
+echo -e "\n---- Parallel Random Number Generation ----"
 ./scripts/4.sh
