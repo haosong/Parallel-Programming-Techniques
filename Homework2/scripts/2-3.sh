@@ -8,30 +8,35 @@
 
 module load Langs/Intel/2015_update2
 
+echo -e "schedule(static,1)\n"
 export OMP_SCHEDULE="static,1"
 ./task2_3 2
 ./task2_3 4
 ./task2_3 8
 ./task2_3 10
 
+echo -e "schedule(static,10)\n"
 export OMP_SCHEDULE="static,10"
 ./task2_3 2
 ./task2_3 4
 ./task2_3 8
 ./task2_3 10
 
+echo -e "schedule(dynamic)\n"
 export OMP_SCHEDULE="dynamic"
 ./task2_3 2
 ./task2_3 4
 ./task2_3 8
 ./task2_3 10
 
+echo -e "schedule(dynamic,10)\n"
 export OMP_SCHEDULE="dynamic,10"
 ./task2_3 2
 ./task2_3 4
 ./task2_3 8
 ./task2_3 10
 
+echo -e "schedule(guided)\n"
 export OMP_SCHEDULE="guided"
 ./task2_3 2
 ./task2_3 4

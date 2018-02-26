@@ -8,5 +8,6 @@
 
 module load Langs/Intel/2015_update2
 
+echo -e "schedule(dynamic)\n"
 export OMP_SCHEDULE="dynamic"
 ./task4 10
