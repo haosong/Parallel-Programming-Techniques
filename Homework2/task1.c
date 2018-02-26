@@ -31,7 +31,7 @@ int main(int argc, char const *argv[]) {
     double area = 2 * N1 * 3.125 / (N1 + N0);
     // printf("N0 = %d, N1 = %d\n", N0, N1);
     printf("area = %f, ", area);
-    printf("runtime = %f\n", runtime);
+    printf("runtime = %f\n\n", runtime);
     return 0;
 }
 
