@@ -45,11 +45,11 @@ int main(int argc, char const *argv[]) {
         }
         }
     }
-    printf("N0 = %d, N1 = %d\n", N0, N1);
+    //printf("N0 = %d, N1 = %d\n", N0, N1);
     timing(&wce, &ct);
     double runtime = wce - wcs;
     double area = 2 * N1 * 3.125 / (N1 + N0);
-    printf("area = %f\n", area);
+    printf("area = %f, ", area);
     printf("runtime = %f\n", runtime);
     return 0;
 }
