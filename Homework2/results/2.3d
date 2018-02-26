@@ -1,0 +1,20 @@
+Seed = 12344. RAND_MAX = 2147483647.
+thread = 1
+N0 = 2371679, N1 = 753321
+area = 1.506642
+runtime = 37.986588
+Seed = 12344. RAND_MAX = 2147483647.
+thread = 1
+N0 = 2371658, N1 = 753342
+area = 1.506684
+runtime = 18.987897
+Seed = 12344. RAND_MAX = 2147483647.
+thread = 1
+N0 = 2371558, N1 = 753442
+area = 1.506884
+runtime = 9.587369
+Seed = 12344. RAND_MAX = 2147483647.
+thread = 1
+N0 = 2371621, N1 = 753379
+area = 1.506758
+runtime = 7.609746
