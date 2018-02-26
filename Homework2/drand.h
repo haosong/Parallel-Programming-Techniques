@@ -6,6 +6,7 @@
 
 static uint64_t seed;
 
+// set seed as thread private to make program thread safe
 #pragma omp threadprivate(seed)
 
 void dsrand(unsigned s);

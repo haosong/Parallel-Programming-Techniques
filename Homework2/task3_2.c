@@ -6,9 +6,11 @@
 #include "timing.h"
 
 int main(int argc, char const *argv[]) {
+    // read argment of threads num
     int threads = (int) strtoimax(argv[1], NULL, 10);
     omp_set_num_threads(threads);
     printf("threads = %d\n", threads);
+    // set random generator seed
     dsrand(12345);
     double wcs, wce, ct;
     timing(&wcs, &ct);
@@ -17,16 +19,20 @@ int main(int argc, char const *argv[]) {
     {
         #pragma omp single
         {
-        for (int x = -2000; x < 500; x++) {
+        for (int x = -2000; x < 500; x++) { // each row generate one task
             #pragma omp task
             {
                 for (int y = 0; y < 1250; y++) {
+                    // initial real and img of c
                     double cr = (drand() + (double)x) * 0.001;
                     double ci = (drand() + (double)y) * 0.001;
+                    // start z the same as c
                     double zr = cr;
                     double zi = ci;
                     int i = 0;
+                    // iterate over z
                     for (; i < 20000; i++) {
+                        // calculate new z based on mathmatic
                         double new_zr = zr * zr - zi * zi + cr;
                         double new_zi = 2 * zr * zi + ci;
                         zr = new_zr;
@@ -35,10 +41,10 @@ int main(int argc, char const *argv[]) {
                     }
                     if (i == 20000) {
                         #pragma omp critical(N1)
-                        N1++;
+                        N1++; // reach to the limit of iteration, N1++
                     } else {
                         #pragma omp critical(N0)
-                        N0++;
+                        N0++; // did not reach to the limit, N0++
                     }                
                 }
             }
