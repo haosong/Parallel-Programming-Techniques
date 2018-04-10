@@ -7,6 +7,8 @@
 #define MIN(a, b) (((a)<(b))?(a):(b))
 #define BLOCK_LEN(rowIndex, blockSize) ((2*rowIndex+blockSize+2)*blockSize/2)
 
+void block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int blockSize, int N);
+
 int main(int argc, char **argv) {
     int rank, size;
     double *A, *B, *C;
@@ -80,7 +82,7 @@ int main(int argc, char **argv) {
         B = (double *) calloc((2 * N - blockSize + 1) * blockSize / 2,
                               sizeof(double)); // Most elements containing in the last block
         C = (double *) calloc(N * blockSize, sizeof(double));
-        nextB = (double *) calloc(N * blockSize, sizeof(double));
+        double *nextB = (double *) calloc(N * blockSize, sizeof(double));
 
         MPI_Barrier(MPI_COMM_WORLD);
 
@@ -101,7 +103,7 @@ int main(int argc, char **argv) {
             block_matmul(A, B, C, rowIndex, colIndex, blockSize, N);
         }
 
-        MPI_Send(C, N * blockSize, MPI_DOUBLE, MPI_ANY_TAG, MPI_COMM_WORLD);
+        MPI_Send(C, N * blockSize, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD);
 
         free(A);
         free(B);

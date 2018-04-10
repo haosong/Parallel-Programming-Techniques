@@ -26,4 +26,4 @@ make task2
 # You can use mpirun options to control the layout of MPI processes---e.g., to spread processes out onto multiple nodes
 # In this example, we've asked Slurm for 4 tasks (2 each on 2 nodes), but we've asked mpirun for two MPI procs, which will go onto 1 node.
 # (If "-n 2" is omitted, you'll get 4 MPI procs (1 per Slurm task)
-time mpirun -n 2 ./task2
+time mpirun -n 2 ./task2 1000
