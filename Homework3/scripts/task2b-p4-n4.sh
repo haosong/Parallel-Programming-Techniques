@@ -27,4 +27,4 @@ make task2
 # In this example, we've asked Slurm for 4 tasks (2 each on 2 nodes), but we've asked mpirun for two MPI procs, which will go onto 1 node.
 # (If "-n 2" is omitted, you'll get 4 MPI procs (1 per Slurm task)
 #time mpiexec -n 4 ./task2
-time mpirun --map-by node ./task2
+time mpirun -n 4 --map-by node ./task2

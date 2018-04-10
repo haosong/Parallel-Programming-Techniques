@@ -1,0 +1,45 @@
+/home/fas/cpsc424/hs746/cs524/Homework3
+c03n02
+8
+rm -f serial task2 *.o
+mpicc -g -O3 -xHost -fno-alias -std=c99 -I/home/fas/cpsc424/ahs3/utils/timing -c task2.c
+mpicc   task2.o /home/fas/cpsc424/ahs3/utils/timing/timing.o   -o task2
+Matrix multiplication times:
+   N      TIME (secs)    F-norm of Error
+ -----   -------------  -----------------
+rank = 1 process cost 0.034911s for N = 1000
+rank = 2 process cost 0.038190s for N = 1000
+rank = 7 process cost 0.038466s for N = 1000
+rank = 3 process cost 0.040160s for N = 1000
+rank = 4 process cost 0.041817s for N = 1000
+rank = 5 process cost 0.042853s for N = 1000
+rank = 6 process cost 0.043693s for N = 1000
+   1000       0.0444     0.0000000000
+rank = 1 process cost 0.250028s for N = 2000
+rank = 2 process cost 0.270746s for N = 2000
+rank = 7 process cost 0.272952s for N = 2000
+rank = 3 process cost 0.285623s for N = 2000
+rank = 4 process cost 0.299255s for N = 2000
+rank = 5 process cost 0.307343s for N = 2000
+rank = 6 process cost 0.314151s for N = 2000
+   2000       0.3167     0.0000000001
+rank = 1 process cost 2.700301s for N = 4000
+rank = 2 process cost 2.935696s for N = 4000
+rank = 7 process cost 3.057141s for N = 4000
+rank = 3 process cost 3.181367s for N = 4000
+rank = 4 process cost 3.413311s for N = 4000
+rank = 5 process cost 3.519414s for N = 4000
+rank = 6 process cost 3.597498s for N = 4000
+   4000       3.6095     0.0000000002
+rank = 1 process cost 27.756972s for N = 8000
+rank = 7 process cost 30.051515s for N = 8000
+rank = 2 process cost 30.305827s for N = 8000
+rank = 3 process cost 31.992565s for N = 8000
+rank = 4 process cost 33.559984s for N = 8000
+rank = 5 process cost 34.316246s for N = 8000
+rank = 6 process cost 35.033544s for N = 8000
+   8000      35.0814     0.0000000000
+
+real	0m42.077s
+user	5m16.075s
+sys	0m2.350s

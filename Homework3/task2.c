@@ -11,10 +11,6 @@
 void block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int blockSize, int N);
 
 int main(int argc, char **argv) {
-    printf("Matrix multiplication times:\n");
-    printf("   N      TIME (secs)    F-norm of Error\n");
-    printf(" -----   -------------  -----------------\n");
-
     int sizes[4]={1000,2000,4000,8000};
 
     char files[4][50]={"/home/fas/cpsc424/ahs3/assignment3/C-1000.dat",\
@@ -27,8 +23,11 @@ int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-    for (int run = 0; run < 4; run++) {
+    
+    if (rank == 0)
+        printf("Matrix multiplication times:\n   N      TIME (secs)    F-norm of Error\n -----   -------------  -----------------\n");
+    
+    for (int run = 3; run < 4; run++) {
         double *A, *B, *C, *Ctrue;
         double wcs, wce, ct;
         FILE *fptr;
