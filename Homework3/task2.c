@@ -22,13 +22,13 @@ int main(int argc, char **argv) {
     int N, sizeAB, sizeC;
     FILE *fptr;
 
+    MPI_Status status;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
     for (int run = 0; run < 4; run++) {
         N = sizes[run];
-
-        MPI_Status status;
-        MPI_Init(&argc, &argv);
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &size);
 
         int blockSize = N / size;
         sizeAB = N * (N + 1) / 2;
@@ -126,8 +126,9 @@ int main(int argc, char **argv) {
             free(C);
             free(nextB);
         }
-        MPI_Finalize();
     }
+
+    MPI_Finalize();
 
 }
 
