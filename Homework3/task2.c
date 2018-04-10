@@ -41,15 +41,15 @@ int main(int argc, char **argv) {
         for (int i = 1; i < size; i++) {
             int rowIndex = i * blockSize;
             int length = BLOCK_LEN(rowIndex, blockSize);;
-            MPI_Send(A + rowIndex * (rowIndex + 1) / 2, length, MPI_DOUBLE, i, MPI_ANY_TAG, MPI_COMM_WORLD);
+            MPI_Send(A + rowIndex * (rowIndex + 1) / 2, length, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
         }
 
         // Send column to all workers
         for (int i = 1; i < size; i++) {
             int colIndex = i * blockSize;
             int length = BLOCK_LEN(colIndex, blockSize);;
-            MPI_Send(&colIndex, 1, MPI_INT, i, MPI_ANY_TAG, MPI_COMM_WORLD);
-            MPI_Send(B + colIndex * (colIndex + 1) / 2, length, MPI_DOUBLE, i, MPI_ANY_TAG, MPI_COMM_WORLD);
+            MPI_Send(&colIndex, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
+            MPI_Send(B + colIndex * (colIndex + 1) / 2, length, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
         }
 
         // Do the calculation on currant master node
@@ -60,17 +60,17 @@ int main(int argc, char **argv) {
 
         // Send column to next node, receive column from prev node
         for (int i = 1; i < size; i++) {
-            MPI_Send(&colIndex, 1, MPI_INT, rank + 1, MPI_ANY_TAG, MPI_COMM_WORLD);
-            MPI_Send(col, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, rank + 1, MPI_ANY_TAG, MPI_COMM_WORLD);
-            MPI_Recv(&colIndex, 1, MPI_INT, size - 1, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-            MPI_Recv(col, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, size - 1, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+            MPI_Send(&colIndex, 1, MPI_INT, rank + 1, 1, MPI_COMM_WORLD);
+            MPI_Send(col, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
+            MPI_Recv(&colIndex, 1, MPI_INT, size - 1, 1, MPI_COMM_WORLD, &status);
+            MPI_Recv(col, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, size - 1, 1, MPI_COMM_WORLD, &status);
             // Calculate on those coming columns
             block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
         }
 
         // Collect results from workers
         for (int i = 1; i < size; i++)
-            MPI_Recv(C + i * blockSize * N, blockSize * N, MPI_DOUBLE, i, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+            MPI_Recv(C + i * blockSize * N, blockSize * N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &status);
 
         free(A);
         free(B);
@@ -86,24 +86,24 @@ int main(int argc, char **argv) {
 
         MPI_Barrier(MPI_COMM_WORLD);
 
-        MPI_Recv(A, BLOCK_LEN(rowIndex, blockSize), MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-        MPI_Recv(&colIndex, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-        MPI_Recv(B, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        MPI_Recv(A, BLOCK_LEN(rowIndex, blockSize), MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &status);
+        MPI_Recv(&colIndex, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, &status);
+        MPI_Recv(B, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &status);
         block_matmul(A, B, C, rowIndex, colIndex, blockSize, N);
 
         for (int i = 1; i < size; i++) {
             int nextColIndex;
-            MPI_Recv(&nextColIndex, 1, MPI_INT, rank - 1, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-            MPI_Recv(nextB, BLOCK_LEN(nextColIndex, blockSize), MPI_DOUBLE, rank - 1, MPI_ANY_TAG, MPI_COMM_WORLD,
+            MPI_Recv(&nextColIndex, 1, MPI_INT, rank - 1, 1, MPI_COMM_WORLD, &status);
+            MPI_Recv(nextB, BLOCK_LEN(nextColIndex, blockSize), MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD,
                      &status);
-            MPI_Send(&colIndex, 1, MPI_INT, (rank + 1) % size, MPI_ANY_TAG, MPI_COMM_WORLD);
-            MPI_Send(B, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, (rank + 1) % size, MPI_ANY_TAG, MPI_COMM_WORLD);
+            MPI_Send(&colIndex, 1, MPI_INT, (rank + 1) % size, 1, MPI_COMM_WORLD);
+            MPI_Send(B, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, (rank + 1) % size, 1, MPI_COMM_WORLD);
             colIndex = nextColIndex;
             memcpy(B, nextB, sizeof(double) * BLOCK_LEN(colIndex, blockSize));
             block_matmul(A, B, C, rowIndex, colIndex, blockSize, N);
         }
 
-        MPI_Send(C, N * blockSize, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD);
+        MPI_Send(C, N * blockSize, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
 
         free(A);
         free(B);
