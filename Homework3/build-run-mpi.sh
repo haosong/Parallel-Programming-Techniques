@@ -4,7 +4,7 @@
 #SBATCH --ntasks=8
 # set number of MPI processes per node
 # (number of nodes is calculated by Slurm)
-#SBATCH --ntasks-per-node=2
+#SBATCH --ntasks-per-node=8
 # set number of cpus per MPI process
 #SBATCH --cpus-per-task=1
 # set memory per cpu
@@ -26,7 +26,4 @@ make task2
 # You can use mpirun options to control the layout of MPI processes---e.g., to spread processes out onto multiple nodes
 # In this example, we've asked Slurm for 4 tasks (2 each on 2 nodes), but we've asked mpirun for two MPI procs, which will go onto 1 node.
 # (If "-n 2" is omitted, you'll get 4 MPI procs (1 per Slurm task)
-time mpiexec -n 1 ./task2 4000
-time mpiexec -n 2 ./task2 4000
-time mpiexec -n 4 ./task2 4000
-time mpiexec -n 8 ./task2 4000
+time mpiexec -n 8 ./task2
