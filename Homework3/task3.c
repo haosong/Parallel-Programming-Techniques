@@ -76,11 +76,12 @@ int main(int argc, char **argv) {
             int colIndex = 0;
             int nextColIndex;
             double *col = B;
-            double *nextB = (double *) calloc(sizeAB, sizeof(double));
+            double *nextB;
+            nextB = (double *) calloc(sizeAB, sizeof(double));
             // Send column to next node, receive column from prev node
             for (int i = 1; i < size; i++) {
                 MPI_Isend(&colIndex, 1, MPI_INT, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[0]);
-                MPI_Isend(col, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[1]);
+                MPI_Isend(col, sizeAB, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[1]);
                 MPI_Irecv(&nextColIndex, 1, MPI_INT, size - 1, 1, MPI_COMM_WORLD, &recvRequest[0]);
                 MPI_Irecv(nextB, sizeAB, MPI_DOUBLE, size - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
                 block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
@@ -92,19 +93,18 @@ int main(int argc, char **argv) {
                 //col = nextB;
                 swap(&col, &nextB);
             }
-            free(A);
-            free(B);
-            free(nextB);
-            block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
 
             // Collect results from workers
             for (int i = 1; i < size; i++)
                 MPI_Irecv(C + i * blockSize * N, blockSize * N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &recvRequest[i]);
-
+            block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
             for (int i = 1; i < size; i++)
                 MPI_Wait(&recvRequest[i], &status);
-
             timing(&wce, &ct);
+            
+            free(A);
+            free(B);
+            
             Ctrue = (double *) calloc(sizeC, sizeof(double));
             fptr = fopen(files[run], "rb");
             fread(Ctrue, sizeof(double), sizeC, fptr);
@@ -116,6 +116,7 @@ int main(int argc, char **argv) {
             printf("  %5d    %9.4f  %15.10f\n", N, wce - wcs, Fnorm);
             free(Ctrue);
             free(C);
+            //free(nextB);
         } else {
             MPI_Status status; //[2 * size];
             MPI_Request sendRequest[20], recvRequest[20];
@@ -136,7 +137,7 @@ int main(int argc, char **argv) {
             for (int i = 1; i < size; i++) {
                 int nextColIndex;
                 MPI_Isend(&colIndex, 1, MPI_INT, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[0]);
-                MPI_Isend(B, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[1]);
+                MPI_Isend(B, sizeAB, MPI_DOUBLE, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[1]);
                 MPI_Irecv(&nextColIndex, 1, MPI_INT, rank - 1, 1, MPI_COMM_WORLD, &recvRequest[0]);
                 MPI_Irecv(nextB, sizeAB, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
                 block_matmul(A, B, C, rowIndex, colIndex, blockSize, N);
