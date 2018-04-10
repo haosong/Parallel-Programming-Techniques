@@ -79,8 +79,8 @@ int main(int argc, char **argv) {
             for (int i = 1; i < size; i++) {
                 MPI_Isend(&colIndex, 1, MPI_INT, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[0]);
                 MPI_Isend(col, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[1]);
-                MPI_Irecv(&nextColIndex, 1, MPI_INT, size - 1, 1, MPI_COMM_WORLD, &status, &recvRequest[0]);
-                MPI_Irecv(nextB, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, size - 1, 1, MPI_COMM_WORLD, &status, &recvRequest[1]);
+                MPI_Irecv(&nextColIndex, 1, MPI_INT, size - 1, 1, MPI_COMM_WORLD, &recvRequest[0]);
+                MPI_Irecv(nextB, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, size - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
                 block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
                 MPI_Waitall(2, sendRequest, status);
                 MPI_Waitall(2, recvRequest, status);
@@ -112,6 +112,8 @@ int main(int argc, char **argv) {
             free(Ctrue);
             free(C);
         } else {
+            MPI_Status status[2 * size];
+            MPI_Request sendRequest[2 * size], recvRequest[size];
             int colIndex;
             int rowIndex = blockSize * rank;
             A = (double *) calloc(sizeAB, sizeof(double));
