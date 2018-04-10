@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "mpi.h"
 #include "timing.h"
 
@@ -11,15 +12,13 @@ void block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, i
 
 int main(int argc, char **argv) {
     int rank, size;
-    double *A, *B, *C;
+    double *A, *B, *C, *Ctrue;
     // int sizeAB, sizeC;
     int N = atoi(argv[1]);
-
     MPI_Status status;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-
     int blockSize = N / size;
 
     // sizeAB = N * (N + 1) / 2;
@@ -29,12 +28,10 @@ int main(int argc, char **argv) {
         A = (double *) calloc(N * (N + 1) / 2, sizeof(double));
         B = (double *) calloc(N * (N + 1) / 2, sizeof(double));
         C = (double *) calloc(N * N, sizeof(double));
-
         srand(12345);
 
         for (int i = 0; i < N * (N + 1) / 2; i++) A[i] = ((double) rand() / (double) RAND_MAX);
         for (int i = 0; i < N * (N + 1) / 2; i++) B[i] = ((double) rand() / (double) RAND_MAX);
-
         MPI_Barrier(MPI_COMM_WORLD);
 
         // Send the permanent row to all workers
@@ -43,7 +40,6 @@ int main(int argc, char **argv) {
             int length = BLOCK_LEN(rowIndex, blockSize);;
             MPI_Send(A + rowIndex * (rowIndex + 1) / 2, length, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
         }
-
         // Send column to all workers
         for (int i = 1; i < size; i++) {
             int colIndex = i * blockSize;
@@ -51,13 +47,11 @@ int main(int argc, char **argv) {
             MPI_Send(&colIndex, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
             MPI_Send(B + colIndex * (colIndex + 1) / 2, length, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
         }
-
         // Do the calculation on currant master node
         int rowIndex = 0;
         int colIndex = 0;
         double *col = B;
         block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
-
         // Send column to next node, receive column from prev node
         for (int i = 1; i < size; i++) {
             MPI_Send(&colIndex, 1, MPI_INT, rank + 1, 1, MPI_COMM_WORLD);
@@ -67,11 +61,21 @@ int main(int argc, char **argv) {
             // Calculate on those coming columns
             block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
         }
-
         // Collect results from workers
         for (int i = 1; i < size; i++)
             MPI_Recv(C + i * blockSize * N, blockSize * N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &status);
-
+        
+        FILE *fptr;
+        Ctrue = (double *) calloc(N * N, sizeof(double));
+        fptr = fopen("/home/fas/cpsc424/ahs3/assignment3/C-4000.dat","rb");
+        fread(Ctrue, sizeof(double), N * N, fptr);
+        fclose(fptr);  
+        
+        double Fnorm = 0.;
+        for (int i=0; i < N * N; i++) Fnorm += (Ctrue[i]-C[i])*(Ctrue[i]-C[i]);
+        Fnorm = sqrt(Fnorm);
+        printf ("  %5d    %9.4f  %15.10f\n", N, 0.12345, Fnorm);
+        
         free(A);
         free(B);
         free(C);
@@ -82,7 +86,8 @@ int main(int argc, char **argv) {
         B = (double *) calloc((2 * N - blockSize + 1) * blockSize / 2,
                               sizeof(double)); // Most elements containing in the last block
         C = (double *) calloc(N * blockSize, sizeof(double));
-        double *nextB = (double *) calloc(N * blockSize, sizeof(double));
+        double * nextB;
+        nextB = (double *) calloc(N * blockSize, sizeof(double));
 
         MPI_Barrier(MPI_COMM_WORLD);
 
@@ -105,10 +110,10 @@ int main(int argc, char **argv) {
 
         MPI_Send(C, N * blockSize, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
 
-        free(A);
-        free(B);
-        free(C);
-        free(nextB);
+        //free(A);
+        //free(B);
+        //free(C);
+        //free(nextB);
     }
 
     MPI_Finalize();
