@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --partition=cpsc424
 # set total number of MPI processes
-#SBATCH --ntasks=4
+#SBATCH --ntasks=8
 # set number of MPI processes per node
 # (number of nodes is calculated by Slurm)
-#SBATCH --ntasks-per-node=4
+#SBATCH --ntasks-per-node=8
 # set number of cpus per MPI process
 #SBATCH --cpus-per-task=1
 # set memory per cpu
@@ -27,4 +27,4 @@ make task3
 # In this example, we've asked Slurm for 4 tasks (2 each on 2 nodes), but we've asked mpirun for two MPI procs, which will go onto 1 node.
 # (If "-n 2" is omitted, you'll get 4 MPI procs (1 per Slurm task)
 #time mpiexec -n 4 ./task2
-time mpirun -n 4 ./task3
+time mpirun -n 8 ./task3
