@@ -20,13 +20,12 @@ int main(int argc, char **argv) {
                        "/home/fas/cpsc424/ahs3/assignment3/C-8000.dat",\
                        "/home/fas/cpsc424/ahs3/assignment3/C-7633.dat"};
     int rank, size;
-    int * blocks = (int *) calloc(size, sizeof(int));
 
     // MPI_Status status;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-
+    int * blocks = (int *) calloc(size, sizeof(int));
     
     if (rank == 0)
         printf("Matrix multiplication times:\n   N      TIME (secs)    F-norm of Error\n -----   -------------  -----------------\n");
@@ -58,7 +57,7 @@ int main(int argc, char **argv) {
 
         if (rank == 0) {
             MPI_Status status; //[2 * size];
-            MPI_Request sendRequest[20], sendRequest2[20], recvRequest[20];
+            MPI_Request sendRequest[20], sendRequest2[20], sendRequest3[20], recvRequest[20];
             A = (double *) calloc(sizeAB, sizeof(double));
             B = (double *) calloc(sizeAB, sizeof(double));
             C = (double *) calloc(sizeC, sizeof(double));
@@ -72,29 +71,32 @@ int main(int argc, char **argv) {
 
             index = 0;
             for (int i = 1; i < size; i++) {
-                int rowIndex = i * blocks[i - 1];
-                int length = BLOCK_LEN(rowIndex, blocks[i]);
-                MPI_Isend(A + rowIndex * (rowIndex + 1) / 2, length, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &sendRequest[i]);
+                index += blocks[i - 1];
+                int length = BLOCK_LEN(index, blocks[i]);
+                MPI_Isend(A + index * (index + 1) / 2, length, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &sendRequest[i]);
             }
             for(int i = 1; i < size; i++)
                 MPI_Wait(&sendRequest[i], &status);            
 
             // Send column to all workers
             for (int i = 1; i < size; i++) {
-                int colIndex = i * blockSize;
+                int colIndex = (i) * blockSize;
                 int length = BLOCK_LEN(colIndex, blockSize);
+                if (i == (size - 1)) length = (colIndex + 1 + N) * (N - colIndex) / 2;
                 MPI_Isend(&colIndex, 1, MPI_INT, i, 1, MPI_COMM_WORLD, &sendRequest[i]);
+                // MPI_Isend(&length, 1, MPI_INT, i, 1, MPI_COMM_WORLD, &sendRequest3[i]);
                 MPI_Isend(B + colIndex * (colIndex + 1) / 2, length, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &sendRequest2[i]);
             }
 
-            for (int i = 1; i < size; i++)
+            for (int i = 1; i < size; i++) {
                 MPI_Wait(&sendRequest[i], &status);
-            for (int i = 1; i < size; i++)
                 MPI_Wait(&sendRequest2[i], &status);
-
+                //MPI_Wait(&sendRequest3[i], &status);
+            }
             // Do the calculation on currant master node
             int rowIndex = 0;
             int colIndex = 0;
+            int recvColLen = BLOCK_LEN(colIndex, blockSize);
             int nextColIndex;
             double *col = B;
             double *nextB = (double *) calloc(sizeAB, sizeof(double));
@@ -102,14 +104,17 @@ int main(int argc, char **argv) {
             // Send column to next node, receive column from prev node
             for (int i = 1; i < size; i++) {
                 MPI_Isend(&colIndex, 1, MPI_INT, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[0]);
-                MPI_Isend(col, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[1]);
+                MPI_Isend(col, recvColLen, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[1]);
                 MPI_Irecv(&nextColIndex, 1, MPI_INT, size - 1, 1, MPI_COMM_WORLD, &recvRequest[0]);
                 MPI_Irecv(nextB, sizeAB, MPI_DOUBLE, size - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
-                block_matmul(A, col, C, rowIndex, colIndex, blocks[0], blockSize, N);
+                int trueBlockSize = blockSize;
+                if (BLOCK_LEN(colIndex, blockSize) < recvColLen) trueBlockSize = N - (size - 1) * blockSize;
+                block_matmul(A, col, C, rowIndex, colIndex, blocks[0], trueBlockSize, N);
                 MPI_Wait(&sendRequest[0], &status);
                 MPI_Wait(&sendRequest[1], &status);
                 MPI_Wait(&recvRequest[0], &status);
                 MPI_Wait(&recvRequest[1], &status);
+                MPI_Get_count(&status, MPI_DOUBLE, &recvColLen);
                 colIndex = nextColIndex;
                 //col = nextB;
                 swap(&col, &nextB);
@@ -142,48 +147,44 @@ int main(int argc, char **argv) {
             free(C);
             free(freeNextB);
         } else {
-printf("0\n");
             MPI_Status status; //[2 * size];
             MPI_Request sendRequest[20], recvRequest[20];
-            int colIndex, nextColIndex;
+            int colIndex, nextColIndex, recvColLen;
             int rowIndex = 0;
             for (int i = 0; i < rank; i++) rowIndex += blocks[i];
-printf("blocks[rank = 3] = %d\n", blocks[3]);
-printf("%d - %d - %d\n", rowIndex, blocks[rank], BLOCK_LEN(rowIndex, blocks[rank]));
             A = (double *) calloc(sizeAB, sizeof(double));
             B = (double *) calloc(sizeAB, sizeof(double)); // Most elements containing in the last block
             C = (double *) calloc(sizeC, sizeof(double));
             double *nextB = (double *) calloc(sizeAB, sizeof(double));
-printf("1\n");
             MPI_Barrier(MPI_COMM_WORLD);
             timing(&wcs, &ct);
-//printf("%d - %d - %d\n", rowIndex, blocks[rank], BLOCK_LEN(rowIndex, blocks[rank]));
             MPI_Irecv(A, BLOCK_LEN(rowIndex, blocks[rank]), MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &recvRequest[0]);
-printf("1.1\n"); 
             MPI_Irecv(&colIndex, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, &recvRequest[1]);
-printf("1.2\n");
             MPI_Irecv(B, sizeAB, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &recvRequest[2]);
-printf("1.3\n");
             MPI_Wait(&recvRequest[0], &status);
             MPI_Wait(&recvRequest[1], &status);
             MPI_Wait(&recvRequest[2], &status);
-printf("2\n");
+            MPI_Get_count(&status, MPI_DOUBLE, &recvColLen);
             for (int i = 1; i < size; i++) {
                 MPI_Isend(&colIndex, 1, MPI_INT, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[0]);
-                MPI_Isend(B, BLOCK_LEN(colIndex, blocks[rank]), MPI_DOUBLE, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[1]);
+                MPI_Isend(B, recvColLen, MPI_DOUBLE, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[1]);
                 MPI_Irecv(&nextColIndex, 1, MPI_INT, rank - 1, 1, MPI_COMM_WORLD, &recvRequest[0]);
                 MPI_Irecv(nextB, sizeAB, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
-                block_matmul(A, B, C, rowIndex, colIndex, blocks[rank], blockSize, N);                
+                int trueBlockSize = blockSize;
+                if (BLOCK_LEN(colIndex, blockSize) < recvColLen) trueBlockSize = N - (size - 1) * blockSize;
+                block_matmul(A, B, C, rowIndex, colIndex, blocks[rank], trueBlockSize, N);                
                 MPI_Wait(&recvRequest[0], &status);
                 MPI_Wait(&recvRequest[1], &status);
+                MPI_Get_count(&status, MPI_DOUBLE, &recvColLen);
                 MPI_Wait(&sendRequest[0], &status);
                 MPI_Wait(&sendRequest[1], &status);
                 colIndex = nextColIndex;
                 //B = nextB;
                 swap(&B, &nextB);
             }
-printf("3\n");
-            block_matmul(A, B, C, rowIndex, colIndex, blocks[rank], blockSize, N);
+            int trueBlockSize = blockSize;
+            if (BLOCK_LEN(colIndex, blockSize) < recvColLen) trueBlockSize = N - (size - 1) * blockSize;
+            block_matmul(A, B, C, rowIndex, colIndex, blocks[rank], trueBlockSize, N);
             timing(&wce, &ct);
             printf("rank = %d process cost %fs for N = %d\n", rank, wce - wcs, N);
             MPI_Send(C, N * blocks[rank], MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);

@@ -1,0 +1,17 @@
+/home/fas/cpsc424/hs746/cs524/Homework3
+c03n04
+4
+rm -f serial task2 task3 task4 *.o
+mpicc -g -O3 -xHost -fno-alias -std=c99 -I/home/fas/cpsc424/ahs3/utils/timing -c task4.c
+mpicc   task4.o /home/fas/cpsc424/ahs3/utils/timing/timing.o   -o task4
+Matrix multiplication times:
+   N      TIME (secs)    F-norm of Error
+ -----   -------------  -----------------
+rank = 2 process cost 31.459104s for N = 7633
+rank = 3 process cost 32.935974s for N = 7633
+rank = 1 process cost 32.979700s for N = 7633
+   7633      40.0266     0.0000000007
+
+real	0m42.099s
+user	2m37.968s
+sys	0m1.140s
