@@ -8,7 +8,7 @@
 #define MIN(a, b) (((a)<(b))?(a):(b))
 #define BLOCK_LEN(rowIndex, blockSize) ((2*rowIndex+blockSize+1)*blockSize/2)
 
-void block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int rowBlockSize, int colBlockSize, int N);
+double block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int rowBlockSize, int colBlockSize, int N);
 void swap(double** A, double** B);
 
 int main(int argc, char **argv) {
@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     int * blocks = (int *) calloc(size, sizeof(int));
     
     if (rank == 0)
-        printf("Matrix multiplication times:\n   N      TIME (secs)    F-norm of Error\n -----   -------------  -----------------\n");
+        printf("Matrix multiplication times:\n RANK   COMP-TIME (secs)   COMM-TIME (secs)   TIME (secs)\n -----   -----------------   -----------------   -------------\n");
     
     int run = (argc == 2) ? 3 : 4; // if have argument, run for N = 8000, else N = 7633.
     for (int tmp = 0; tmp < 1; tmp++) { // Only run once, either N = 8000 or 7633
@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
         int blockSize = N / size;
         int sizeAB = N * (N + 1) / 2;
         int sizeC = N * N;
+        double compTime = 0, commTime = 0;
 
         // allocate blocks for load blance and generalization
         int avg = (1 + N) * N / (size * 2);
@@ -57,6 +58,7 @@ int main(int argc, char **argv) {
         }
 
         if (rank == 0) {
+            printf("N = %d\n", N);
             MPI_Status status; //[2 * size];
             MPI_Request sendRequest[20], sendRequest2[20], sendRequest3[20], recvRequest[20];
             A = (double *) calloc(sizeAB, sizeof(double));
@@ -110,7 +112,7 @@ int main(int argc, char **argv) {
                 MPI_Irecv(nextB, sizeAB, MPI_DOUBLE, size - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
                 int trueBlockSize = blockSize;
                 if (BLOCK_LEN(colIndex, blockSize) < recvColLen) trueBlockSize = N - (size - 1) * blockSize;
-                block_matmul(A, col, C, rowIndex, colIndex, blocks[0], trueBlockSize, N);
+                compTime += block_matmul(A, col, C, rowIndex, colIndex, blocks[0], trueBlockSize, N);
                 MPI_Wait(&sendRequest[0], &status);
                 MPI_Wait(&sendRequest[1], &status);
                 MPI_Wait(&recvRequest[0], &status);
@@ -127,10 +129,12 @@ int main(int argc, char **argv) {
                 index += blocks[i - 1];        
                 MPI_Irecv(C + index * N, blocks[i] * N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &recvRequest[i]);
             }
-            block_matmul(A, col, C, rowIndex, colIndex, blocks[0], blockSize, N);
+            compTime += block_matmul(A, col, C, rowIndex, colIndex, blocks[0], blockSize, N);
             for (int i = 1; i < size; i++)
                 MPI_Wait(&recvRequest[i], &status);
+
             timing(&wce, &ct);
+            commTime = wce - wcs - compTime;
             
             free(A);
             free(B);
@@ -143,7 +147,9 @@ int main(int argc, char **argv) {
             double Fnorm = 0.;
             for (int i = 0; i < N * N; i++) Fnorm += (Ctrue[i] - C[i]) * (Ctrue[i] - C[i]);
             Fnorm = sqrt(Fnorm);
-            printf("  %5d    %9.4f  %15.10f\n", N, wce - wcs, Fnorm);
+            printf("  %5d    %9.4f    %9.4f    %9.4f\n", 0, compTime, commTime, wce - wcs);
+            printf("F-norm of Error: %15.10f\n", Fnorm);
+            printf("Total Runtime: %9.4f\n", wce - wcs);
             free(Ctrue);
             free(C);
             free(freeNextB);
@@ -173,7 +179,7 @@ int main(int argc, char **argv) {
                 MPI_Irecv(nextB, sizeAB, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
                 int trueBlockSize = blockSize;
                 if (BLOCK_LEN(colIndex, blockSize) < recvColLen) trueBlockSize = N - (size - 1) * blockSize;
-                block_matmul(A, B, C, rowIndex, colIndex, blocks[rank], trueBlockSize, N);                
+                compTime += block_matmul(A, B, C, rowIndex, colIndex, blocks[rank], trueBlockSize, N);                
                 MPI_Wait(&recvRequest[0], &status);
                 MPI_Wait(&recvRequest[1], &status);
                 MPI_Get_count(&status, MPI_DOUBLE, &recvColLen);
@@ -185,10 +191,13 @@ int main(int argc, char **argv) {
             }
             int trueBlockSize = blockSize;
             if (BLOCK_LEN(colIndex, blockSize) < recvColLen) trueBlockSize = N - (size - 1) * blockSize;
-            block_matmul(A, B, C, rowIndex, colIndex, blocks[rank], trueBlockSize, N);
-            timing(&wce, &ct);
-            printf("rank = %d process cost %fs for N = %d\n", rank, wce - wcs, N);
+            compTime += block_matmul(A, B, C, rowIndex, colIndex, blocks[rank], trueBlockSize, N);
+
             MPI_Send(C, N * blocks[rank], MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+            
+            timing(&wce, &ct);
+            commTime = wce - wcs - compTime;
+            printf("  %5d    %9.4f    %9.4f    %9.4f\n", rank, compTime, commTime, wce - wcs);
 
             free(A);
             free(B);
@@ -201,7 +210,7 @@ int main(int argc, char **argv) {
     free(blocks);
 }
 
-void block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int rowBlockSize, int colBlockSize, int N) {
+double block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int rowBlockSize, int colBlockSize, int N) {
     double wctime0, wctime1, cputime;
     timing(&wctime0, &cputime);
     int iA, iB, iC;
