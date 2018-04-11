@@ -1,29 +1,41 @@
 /home/fas/cpsc424/hs746/cs524/Homework3
 c03n01
 4
-rm -f serial task2 task3 *.o
+rm -f serial task2 task3 task4 *.o
 mpicc -g -O3 -xHost -fno-alias -std=c99 -I/home/fas/cpsc424/ahs3/utils/timing -c task3.c
 mpicc   task3.o /home/fas/cpsc424/ahs3/utils/timing/timing.o   -o task3
 Matrix multiplication times:
-   N      TIME (secs)    F-norm of Error
- -----   -------------  -----------------
-rank = 1 process cost 0.052729s for N = 1000
-rank = 3 process cost 0.057375s for N = 1000
-rank = 2 process cost 0.061167s for N = 1000
-   1000       0.0618     0.0000000000
-rank = 1 process cost 0.311431s for N = 2000
-rank = 3 process cost 0.450158s for N = 2000
-rank = 2 process cost 0.477900s for N = 2000
-   2000       0.4807     0.0000000000
-rank = 1 process cost 5.864721s for N = 4000
-rank = 3 process cost 5.956317s for N = 4000
-rank = 2 process cost 7.605007s for N = 4000
-   4000       7.6169     0.0000000000
-rank = 1 process cost 46.654476s for N = 8000
-rank = 3 process cost 52.365352s for N = 8000
-rank = 2 process cost 56.102864s for N = 8000
-   8000      56.1528     0.0000000000
+ RANK   COMP-TIME (secs)   COMM-TIME (secs)   TIME (secs)
+ -----   -----------------   -----------------   -------------
+N = 1000
+      1       0.0361       0.0195       0.0556
+      3       0.0544       0.0038       0.0583
+      2       0.0488       0.0232       0.0721
+      0       0.0156       0.0565       0.0721
+F-norm of Error:    0.0000000000
+Total Runtime:    0.0721
+N = 2000
+      1       0.2740       0.0584       0.3324
+      3       0.4286       0.0131       0.4417
+      2       0.3760       0.0923       0.4683
+      0       0.1132       0.3551       0.4683
+F-norm of Error:    0.0000000000
+Total Runtime:    0.4683
+N = 4000
+      1       3.1791       1.9024       5.0815
+      3       5.1358       0.0481       5.1839
+      2       4.4509       1.9574       6.4083
+      0       1.0065       5.4017       6.4082
+F-norm of Error:    0.0000000000
+Total Runtime:    6.4082
+N = 8000
+      1      30.6377      12.4412      43.0789
+      3      47.6064       0.1868      47.7932
+      2      42.1020       9.2975      51.3995
+      0      11.6594      39.7401      51.3995
+F-norm of Error:    0.0000000000
+Total Runtime:   51.3995
 
-real	1m7.297s
-user	4m13.255s
-sys	0m1.694s
+real	1m1.341s
+user	3m50.127s
+sys	0m1.837s

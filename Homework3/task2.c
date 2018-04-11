@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
         printf("Matrix multiplication times:\n RANK   COMP-TIME (secs)   COMM-TIME (secs)   TIME (secs)\n -----   -----------------   -----------------   -------------\n");
     
     int run = (argc == 2) ? 3 : 0; // if have argument, then just run for N = 8000.
-    for (int run = 3; run < 4; run++) {
+    for (; run < 4; run++) {
         double *A, *B, *C, *Ctrue;
         double wcs, wce, ct;
         FILE *fptr;
@@ -38,9 +38,9 @@ int main(int argc, char **argv) {
         sizeAB = N * (N + 1) / 2;
         sizeC = N * N;
         double compTime = 0, commTime = 0;
-        printf("N = %d\n", N);
 
         if (rank == 0) {
+            printf("N = %d\n", N);
             A = (double *) calloc(sizeAB, sizeof(double));
             B = (double *) calloc(sizeAB, sizeof(double));
             C = (double *) calloc(sizeC, sizeof(double));

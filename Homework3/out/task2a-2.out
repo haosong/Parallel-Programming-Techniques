@@ -1,25 +1,33 @@
-
-The following have been reloaded with a version change:
-  1) Langs/Intel/2015_update2 => Langs/Intel/15.0.2
-
 /home/fas/cpsc424/hs746/cs524/Homework3
 c03n01
 2
-rm -f serial task2 *.o
+rm -f serial task2 task3 task4 *.o
 mpicc -g -O3 -xHost -fno-alias -std=c99 -I/home/fas/cpsc424/ahs3/utils/timing -c task2.c
 mpicc   task2.o /home/fas/cpsc424/ahs3/utils/timing/timing.o   -o task2
 Matrix multiplication times:
-   N      TIME (secs)    F-norm of Error
- -----   -------------  -----------------
-rank = 1 process cost 0.105949s for N = 1000
-   1000       0.1100     0.0000000000
-rank = 1 process cost 0.814542s for N = 2000
-   2000       0.8282     0.0000000000
-rank = 1 process cost 10.162480s for N = 4000
-   4000      10.4536     0.0000000000
-rank = 1 process cost 85.226133s for N = 8000
-   8000      86.3449     0.0000000000
+ RANK   COMP-TIME (secs)   COMM-TIME (secs)   TIME (secs)
+ -----   -----------------   -----------------   -------------
+N = 1000
+      1       0.1021       0.0081       0.1103
+      0       0.0526       0.0577       0.1103
+F-norm of Error:    0.0000000000
+Total Runtime:    0.1103
+N = 2000
+      1       0.7965       0.0294       0.8258
+      0       0.3825       0.4433       0.8258
+F-norm of Error:    0.0000000000
+Total Runtime:    0.8258
+N = 4000
+      1       9.7601       0.3910      10.1511
+      0       4.0731       6.0780      10.1511
+F-norm of Error:    0.0000000000
+Total Runtime:   10.1511
+N = 8000
+      1      86.2416       1.4635      87.7051
+      0      41.2563      46.4488      87.7051
+F-norm of Error:    0.0000000000
+Total Runtime:   87.7051
 
-real	1m40.599s
-user	3m19.583s
-sys	0m1.097s
+real	1m41.667s
+user	3m21.328s
+sys	0m1.510s

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=cpsc424
+#SBATCH --partition=day
 # set total number of MPI processes
 #SBATCH --ntasks=8
 # set number of MPI processes per node

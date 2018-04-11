@@ -8,7 +8,7 @@
 #define MIN(a, b) (((a)<(b))?(a):(b))
 #define BLOCK_LEN(rowIndex, blockSize) ((2*rowIndex+blockSize+1)*blockSize/2)
 
-void block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int blockSize, int N);
+double block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int blockSize, int N);
 void swap(double** A, double** B);
 
 int main(int argc, char **argv) {
@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
         printf("Matrix multiplication times:\n RANK   COMP-TIME (secs)   COMM-TIME (secs)   TIME (secs)\n -----   -----------------   -----------------   -------------\n");
     
     int run = (argc == 2) ? 3 : 0; // if have argument, then just run for N = 8000.
-    for (run = 0; run < 4; run++) {
+    for (; run < 4; run++) {
         double *A, *B, *C, *Ctrue;
         double wcs, wce, ct;
         FILE *fptr;
@@ -38,9 +38,9 @@ int main(int argc, char **argv) {
         int sizeAB = N * (N + 1) / 2;
         int sizeC = N * N;
         double compTime = 0, commTime = 0;
-        printf("N = %d\n", N);
 
         if (rank == 0) {
+            printf("N = %d\n", N);
             MPI_Status status; //[2 * size];
             MPI_Request sendRequest[20], sendRequest2[20], recvRequest[20];
             A = (double *) calloc(sizeAB, sizeof(double));
@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
                 MPI_Wait(&recvRequest[i], &status);
             
             timing(&wce, &ct);
-            commTime = wce - wct - compTime;
+            commTime = wce - wcs - compTime;
             free(A);
             free(B);
             
@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
 
 }
 
-void block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int blockSize, int N) {
+double block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int blockSize, int N) {
     double wctime0, wctime1, cputime;
     timing(&wctime0, &cputime);
     int iA, iB, iC;
