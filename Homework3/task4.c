@@ -8,7 +8,7 @@
 #define MIN(a, b) (((a)<(b))?(a):(b))
 #define BLOCK_LEN(rowIndex, blockSize) ((2*rowIndex+blockSize+1)*blockSize/2)
 
-void block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int blockSize, int N);
+void block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int rowBlockSize, int colBlockSize, int N);
 void swap(double** A, double** B);
 
 int main(int argc, char **argv) {
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
             }
 
             // Collect results from workers
-            index = 0
+            index = 0;
             for (int i = 1; i < size; i++) {
                 index += blocks[i - 1];        
                 MPI_Irecv(C + index * N, blocks[i] * N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &recvRequest[i]);
@@ -142,23 +142,32 @@ int main(int argc, char **argv) {
             free(C);
             free(freeNextB);
         } else {
+printf("0\n");
             MPI_Status status; //[2 * size];
             MPI_Request sendRequest[20], recvRequest[20];
             int colIndex, nextColIndex;
             int rowIndex = 0;
             for (int i = 0; i < rank; i++) rowIndex += blocks[i];
+printf("blocks[rank = 3] = %d\n", blocks[3]);
+printf("%d - %d - %d\n", rowIndex, blocks[rank], BLOCK_LEN(rowIndex, blocks[rank]));
             A = (double *) calloc(sizeAB, sizeof(double));
             B = (double *) calloc(sizeAB, sizeof(double)); // Most elements containing in the last block
             C = (double *) calloc(sizeC, sizeof(double));
             double *nextB = (double *) calloc(sizeAB, sizeof(double));
+printf("1\n");
             MPI_Barrier(MPI_COMM_WORLD);
             timing(&wcs, &ct);
+//printf("%d - %d - %d\n", rowIndex, blocks[rank], BLOCK_LEN(rowIndex, blocks[rank]));
             MPI_Irecv(A, BLOCK_LEN(rowIndex, blocks[rank]), MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &recvRequest[0]);
+printf("1.1\n"); 
             MPI_Irecv(&colIndex, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, &recvRequest[1]);
+printf("1.2\n");
             MPI_Irecv(B, sizeAB, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &recvRequest[2]);
+printf("1.3\n");
             MPI_Wait(&recvRequest[0], &status);
             MPI_Wait(&recvRequest[1], &status);
             MPI_Wait(&recvRequest[2], &status);
+printf("2\n");
             for (int i = 1; i < size; i++) {
                 MPI_Isend(&colIndex, 1, MPI_INT, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[0]);
                 MPI_Isend(B, BLOCK_LEN(colIndex, blocks[rank]), MPI_DOUBLE, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[1]);
@@ -173,6 +182,7 @@ int main(int argc, char **argv) {
                 //B = nextB;
                 swap(&B, &nextB);
             }
+printf("3\n");
             block_matmul(A, B, C, rowIndex, colIndex, blocks[rank], blockSize, N);
             timing(&wce, &ct);
             printf("rank = %d process cost %fs for N = %d\n", rank, wce - wcs, N);
