@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
                 block_matmul(A, B, C, rowIndex, colIndex, blockSize, N);
             }
             timing(&wce, &ct);
-            printf("rank = %d process cost %fs for N = %d\n", rank, wce - wcs, N);
+            printf("  %5d    %9.4f     rank = %d\n", N, wce - wcs, rank);
             MPI_Send(C, N * blockSize, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
 
             free(A);
