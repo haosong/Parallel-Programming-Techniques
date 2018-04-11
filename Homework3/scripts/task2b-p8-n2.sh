@@ -19,4 +19,4 @@ echo $SLURM_JOB_NODELIST
 echo $SLURM_NTASKS_PER_NODE
 make clean
 make task2
-time mpirun -n 8 --map-by socket ./task2
+time mpirun -n 8 --map-by socket ./task2 8000
