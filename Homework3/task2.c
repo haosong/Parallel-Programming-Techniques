@@ -6,7 +6,7 @@
 #include "timing.h"
 
 #define MIN(a, b) (((a)<(b))?(a):(b))
-#define BLOCK_LEN(rowIndex, blockSize) ((2*rowIndex+blockSize+2)*blockSize/2)
+#define BLOCK_LEN(rowIndex, blockSize) ((2*rowIndex+blockSize+1)*blockSize/2)
 
 void block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int blockSize, int N);
 
