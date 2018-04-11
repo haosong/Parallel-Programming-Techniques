@@ -1,0 +1,20 @@
+/home/fas/cpsc424/hs746/cs524/Homework3
+c03n[01,03]
+2
+rm -f serial task2 task3 task4 *.o
+mpicc -g -O3 -xHost -fno-alias -std=c99 -I/home/fas/cpsc424/ahs3/utils/timing -c task3.c
+mpicc   task3.o /home/fas/cpsc424/ahs3/utils/timing/timing.o   -o task3
+Matrix multiplication times:
+ RANK   COMP-TIME (secs)   COMM-TIME (secs)   TIME (secs)
+ -----   -----------------   -----------------   -------------
+N = 8000
+      1      27.5003      14.5536      42.0538
+      3      46.2836       0.2629      46.5465
+      2      39.2583      11.4421      50.7004
+      0       9.2218      41.4786      50.7004
+F-norm of Error:    0.0000000000
+Total Runtime:   50.7004
+
+real	0m53.221s
+user	1m35.969s
+sys	0m1.022s

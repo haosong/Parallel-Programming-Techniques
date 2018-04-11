@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
     if (rank == 0)
         printf("Matrix multiplication times:\n RANK   COMP-TIME (secs)   COMM-TIME (secs)   TIME (secs)\n -----   -----------------   -----------------   -------------\n");
     
-    int run = (argc == 2) ? 3 : 4; // if have argument, run for N = 8000, else N = 7633.
+    int run = (argc == 2) ? 4 : 3; // if have argument, run for N = 8000, else N = 7633.
     for (int tmp = 0; tmp < 1; tmp++) { // Only run once, either N = 8000 or 7633
         double *A, *B, *C, *Ctrue;
         double wcs, wce, ct;
