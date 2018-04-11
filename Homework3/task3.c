@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     
     if (rank == 0)
-        printf("Matrix multiplication times:\n   N      TIME (secs)    F-norm of Error\n -----   -------------  -----------------\n");
+        printf("Matrix multiplication times:\n RANK   COMP-TIME (secs)   COMM-TIME (secs)   TIME (secs)\n -----   -----------------   -----------------   -------------\n");
     
     int run = (argc == 2) ? 3 : 0; // if have argument, then just run for N = 8000.
     for (run = 0; run < 4; run++) {
@@ -37,6 +37,8 @@ int main(int argc, char **argv) {
         int blockSize = N / size;
         int sizeAB = N * (N + 1) / 2;
         int sizeC = N * N;
+        double compTime = 0, commTime = 0;
+        printf("N = %d\n", N);
 
         if (rank == 0) {
             MPI_Status status; //[2 * size];
@@ -85,7 +87,7 @@ int main(int argc, char **argv) {
                 MPI_Isend(col, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[1]);
                 MPI_Irecv(&nextColIndex, 1, MPI_INT, size - 1, 1, MPI_COMM_WORLD, &recvRequest[0]);
                 MPI_Irecv(nextB, sizeAB, MPI_DOUBLE, size - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
-                block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
+                compTime += block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
                 MPI_Wait(&sendRequest[0], &status);
                 MPI_Wait(&sendRequest[1], &status);
                 MPI_Wait(&recvRequest[0], &status);
@@ -99,12 +101,13 @@ int main(int argc, char **argv) {
             for (int i = 1; i < size; i++)
                 MPI_Irecv(C + i * blockSize * N, blockSize * N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &recvRequest[i]);
             
-            block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
+            compTime += block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
             
             for (int i = 1; i < size; i++)
                 MPI_Wait(&recvRequest[i], &status);
-            timing(&wce, &ct);
             
+            timing(&wce, &ct);
+            commTime = wce - wct - compTime;
             free(A);
             free(B);
             
@@ -116,7 +119,9 @@ int main(int argc, char **argv) {
             double Fnorm = 0.;
             for (int i = 0; i < N * N; i++) Fnorm += (Ctrue[i] - C[i]) * (Ctrue[i] - C[i]);
             Fnorm = sqrt(Fnorm);
-            printf("  %5d    %9.4f  %15.10f\n", N, wce - wcs, Fnorm);
+            printf("  %5d    %9.4f    %9.4f    %9.4f\n", 0, compTime, commTime, wce - wcs);
+            printf("F-norm of Error: %15.10f\n", Fnorm);
+            printf("Total Runtime: %9.4f\n", wce - wcs);
             free(Ctrue);
             free(C);
             free(freeNextB);
@@ -142,7 +147,7 @@ int main(int argc, char **argv) {
                 MPI_Isend(B, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[1]);
                 MPI_Irecv(&nextColIndex, 1, MPI_INT, rank - 1, 1, MPI_COMM_WORLD, &recvRequest[0]);
                 MPI_Irecv(nextB, sizeAB, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
-                block_matmul(A, B, C, rowIndex, colIndex, blockSize, N);                
+                compTime += block_matmul(A, B, C, rowIndex, colIndex, blockSize, N);                
                 MPI_Wait(&recvRequest[0], &status);
                 MPI_Wait(&recvRequest[1], &status);
                 MPI_Wait(&sendRequest[0], &status);
@@ -151,10 +156,12 @@ int main(int argc, char **argv) {
                 //B = nextB;
                 swap(&B, &nextB);
             }
-            block_matmul(A, B, C, rowIndex, colIndex, blockSize, N);
-            timing(&wce, &ct);
-            printf("rank = %d process cost %fs for N = %d\n", rank, wce - wcs, N);
+            compTime += block_matmul(A, B, C, rowIndex, colIndex, blockSize, N);
             MPI_Send(C, N * blockSize, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+
+            timing(&wce, &ct);
+            commTime = wce - wcs - compTime;
+            printf("  %5d    %9.4f    %9.4f    %9.4f\n", rank, compTime, commTime, wce - wcs);
 
             free(A);
             free(B);

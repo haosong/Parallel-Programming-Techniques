@@ -18,4 +18,4 @@ echo $SLURM_JOB_NODELIST
 echo $SLURM_NTASKS_PER_NODE
 make clean
 make task3
-time mpirun -n 8 ./task3
+time mpirun -n 8 ./task2

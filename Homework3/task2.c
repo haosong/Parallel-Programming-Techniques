@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     
     if (rank == 0)
-        printf("Matrix multiplication times:\n   RANK      COMP-TIME (secs)    COMM-TIME (secs)\n -----   -------------  -----------------\n");
+        printf("Matrix multiplication times:\n RANK   COMP-TIME (secs)   COMM-TIME (secs)   TIME (secs)\n -----   -----------------   -----------------   -------------\n");
     
     int run = (argc == 2) ? 3 : 0; // if have argument, then just run for N = 8000.
     for (int run = 3; run < 4; run++) {
@@ -38,6 +38,7 @@ int main(int argc, char **argv) {
         sizeAB = N * (N + 1) / 2;
         sizeC = N * N;
         double compTime = 0, commTime = 0;
+        printf("N = %d\n", N);
 
         if (rank == 0) {
             A = (double *) calloc(sizeAB, sizeof(double));
@@ -96,7 +97,7 @@ int main(int argc, char **argv) {
             double Fnorm = 0.;
             for (int i = 0; i < N * N; i++) Fnorm += (Ctrue[i] - C[i]) * (Ctrue[i] - C[i]);
             Fnorm = sqrt(Fnorm);
-            printf("  %5d    %9.4f    %9.4f\n", 0, compTime, commTime);
+            printf("  %5d    %9.4f    %9.4f    %9.4f\n", 0, compTime, commTime, wce - wcs);
             printf("F-norm of Error: %15.10f\n", Fnorm);
             printf("Total Runtime: %9.4f\n", wce - wcs);
             free(Ctrue);
@@ -132,8 +133,7 @@ int main(int argc, char **argv) {
 
             timing(&wce, &ct);
             commTime = wce - wcs - compTime;
-
-            printf("  %5d    %9.4f    %9.4f\n", rank, compTime, commTime);
+            printf("  %5d    %9.4f    %9.4f    %9.4f\n", rank, compTime, commTime, wce - wcs);
 
             free(A);
             free(B);
