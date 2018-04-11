@@ -30,7 +30,8 @@ int main(int argc, char **argv) {
     if (rank == 0)
         printf("Matrix multiplication times:\n   N      TIME (secs)    F-norm of Error\n -----   -------------  -----------------\n");
     
-    for (int run = 4; run < 5; run++) {
+    int run = (argc == 2) ? 3 : 4; // if have argument, run for N = 8000, else N = 7633.
+    for (int tmp = 0; tmp < 1; tmp++) { // Only run once, either N = 8000 or 7633
         double *A, *B, *C, *Ctrue;
         double wcs, wce, ct;
         FILE *fptr;
@@ -201,6 +202,8 @@ int main(int argc, char **argv) {
 }
 
 void block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int rowBlockSize, int colBlockSize, int N) {
+    double wctime0, wctime1, cputime;
+    timing(&wctime0, &cputime);
     int iA, iB, iC;
     for (int i = 0; i < rowBlockSize; i++) {
         iC = i * N + colIndex;
@@ -211,6 +214,8 @@ void block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, i
             for (int k = 0; k <= MIN(i + rowIndex, j + colIndex); k++) C[iC] += A[iA + k] * B[iB + k];
         }
     }
+    timing(&wctime1, &cputime);
+    return(wctime1 - wctime0);
 }
 
 void swap(double** A, double** B) {
