@@ -146,6 +146,7 @@ int main(int argc, char **argv) {
 
 }
 
+// Do matrix multiplication for certain block
 double block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int blockSize, int N) {
     double wctime0, wctime1, cputime;
     timing(&wctime0, &cputime);
