@@ -5,6 +5,7 @@
 # set number of MPI processes per node
 # (number of nodes is calculated by Slurm)
 #SBATCH --ntasks-per-node=2
+#SBATCH --ntasks-per-socket=1
 # set number of cpus per MPI process
 #SBATCH --cpus-per-task=1
 # set memory per cpu
@@ -18,4 +19,4 @@ echo $SLURM_JOB_NODELIST
 echo $SLURM_NTASKS_PER_NODE
 make clean
 make task4
-time mpirun -n 7 ./task4 7633
+time mpirun -n 7 --map-by socket ./task4 7633
