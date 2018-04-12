@@ -82,8 +82,10 @@ int main(int argc, char **argv) {
             double *freeNextB = nextB;
             // Send column to next node, receive column from prev node
             for (int i = 1; i < size; i++) {
+                // Send col to next node
                 MPI_Isend(&colIndex, 1, MPI_INT, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[0]);
                 MPI_Isend(col, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[1]);
+                // Recv col from prev node
                 MPI_Irecv(&nextColIndex, 1, MPI_INT, size - 1, 1, MPI_COMM_WORLD, &recvRequest[0]);
                 MPI_Irecv(nextB, sizeAB, MPI_DOUBLE, size - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
                 // Do the calculation while recving next block, key part of non-blocking implementation.
@@ -141,10 +143,12 @@ int main(int argc, char **argv) {
             MPI_Wait(&recvRequest[0], &status);
             MPI_Wait(&recvRequest[1], &status);
             MPI_Wait(&recvRequest[2], &status);
-            // Receive row data, have to wait.
+            // Receive row data, have to wait. Equvallent to blocking, but doesn't affect performance
             for (int i = 1; i < size; i++) {
+                // Send col to next node
                 MPI_Isend(&colIndex, 1, MPI_INT, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[0]);
                 MPI_Isend(B, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[1]);
+                // Recv col from prev node
                 MPI_Irecv(&nextColIndex, 1, MPI_INT, rank - 1, 1, MPI_COMM_WORLD, &recvRequest[0]);
                 MPI_Irecv(nextB, sizeAB, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
                 // Do the calculation while recving next block, key part of non-blocking implementation.
@@ -154,7 +158,6 @@ int main(int argc, char **argv) {
                 MPI_Wait(&sendRequest[0], &status);
                 MPI_Wait(&sendRequest[1], &status);
                 colIndex = nextColIndex;
-                //B = nextB;
                 swap(&B, &nextB);
             }
             compTime += block_matmul(A, B, C, rowIndex, colIndex, blockSize, N);

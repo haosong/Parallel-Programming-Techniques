@@ -39,8 +39,8 @@ int main(int argc, char **argv) {
         int sizeC = N * N;
         double compTime = 0, commTime = 0;
 
-        // allocate blocks for load blance and generalization
-        int avg = (1 + N) * N / (size * 2);
+        // Key part for load blance, allocate blocks based on number of elements rather then number of rows
+        int avg = sizeAB / size;
         int index = 0, start = 0, sum = 0;
         for (int i = 1; i <= N; i++) {
             sum += i;
@@ -57,11 +57,13 @@ int main(int argc, char **argv) {
 
         if (rank == 0) {
             printf("N = %d\n", N);
+            // Declare MPI status and request
             MPI_Status status;
             MPI_Request sendRequest[2 * size], recvRequest[size];
             A = (double *) calloc(sizeAB, sizeof(double));
             B = (double *) calloc(sizeAB, sizeof(double));
             C = (double *) calloc(sizeC, sizeof(double));
+            // Generate A and B
             srand(12345);
             for (int i = 0; i < sizeAB; i++) A[i] = ((double) rand() / (double) RAND_MAX);
             for (int i = 0; i < sizeAB; i++) B[i] = ((double) rand() / (double) RAND_MAX);
@@ -69,7 +71,6 @@ int main(int argc, char **argv) {
 
             // Send the permanent row to all workers
             timing(&wcs, &ct);
-
             index = 0;
             for (int i = 1; i < size; i++) {
                 index += blocks[i - 1];
@@ -78,7 +79,6 @@ int main(int argc, char **argv) {
             }
             for(int i = 1; i < size; i++)
                 MPI_Wait(&sendRequest[i], &status);            
-
             // Send column to all workers
             for (int i = 1; i < size; i++) {
                 int colIndex = (i) * blockSize;
@@ -87,27 +87,33 @@ int main(int argc, char **argv) {
                 MPI_Isend(&colIndex, 1, MPI_INT, i, 1, MPI_COMM_WORLD, &sendRequest[i]);
                 MPI_Isend(B + colIndex * (colIndex + 1) / 2, length, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &sendRequest[i + size]);
             }
-
             for (int i = 1; i < size; i++) {
                 MPI_Wait(&sendRequest[i], &status);
                 MPI_Wait(&sendRequest[i + size], &status);
             }
-            // Do the calculation on currant master node
+            // The above part have to wait, which make it equivallent to blocking implementation.
+            // But doesn't affect the general optimization below.
+
             int rowIndex = 0;
             int colIndex = 0;
             int recvColLen = BLOCK_LEN(colIndex, blockSize);
             int nextColIndex;
             double *col = B;
-            double *nextB = (double *) calloc(sizeAB, sizeof(double));
+            double *nextB = (double *) calloc(sizeAB, sizeof(double)); // buffer for next col
             double *freeNextB = nextB;
             // Send column to next node, receive column from prev node
             for (int i = 1; i < size; i++) {
+                // Send col to next node
                 MPI_Isend(&colIndex, 1, MPI_INT, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[0]);
                 MPI_Isend(col, recvColLen, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &sendRequest[1]);
+                // Recv col from prev node
                 MPI_Irecv(&nextColIndex, 1, MPI_INT, size - 1, 1, MPI_COMM_WORLD, &recvRequest[0]);
                 MPI_Irecv(nextB, sizeAB, MPI_DOUBLE, size - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
+                // Key part for generalization, determine if it's the last block or not.
+                // If this is the last block, need to take all the rest part.
                 int trueBlockSize = blockSize;
                 if (BLOCK_LEN(colIndex, blockSize) < recvColLen) trueBlockSize = N - (size - 1) * blockSize;
+                // Do the calculation while recving next block, key part of non-blocking implementation.
                 compTime += block_matmul(A, col, C, rowIndex, colIndex, blocks[0], trueBlockSize, N);
                 MPI_Wait(&sendRequest[0], &status);
                 MPI_Wait(&sendRequest[1], &status);
@@ -115,7 +121,6 @@ int main(int argc, char **argv) {
                 MPI_Wait(&recvRequest[1], &status);
                 MPI_Get_count(&status, MPI_DOUBLE, &recvColLen);
                 colIndex = nextColIndex;
-                //col = nextB;
                 swap(&col, &nextB);
             }
 
@@ -125,21 +130,21 @@ int main(int argc, char **argv) {
                 index += blocks[i - 1];        
                 MPI_Irecv(C + index * N, blocks[i] * N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &recvRequest[i]);
             }
+            // Doing the last block calculation while collect results
             compTime += block_matmul(A, col, C, rowIndex, colIndex, blocks[0], blockSize, N);
             for (int i = 1; i < size; i++)
                 MPI_Wait(&recvRequest[i], &status);
 
             timing(&wce, &ct);
             commTime = wce - wcs - compTime;
-            
             free(A);
             free(B);
-            
+            // Read correct answer
             Ctrue = (double *) calloc(sizeC, sizeof(double));
             fptr = fopen(files[run], "rb");
             fread(Ctrue, sizeof(double), sizeC, fptr);
             fclose(fptr);
-
+            // Checking
             double Fnorm = 0.;
             for (int i = 0; i < N * N; i++) Fnorm += (Ctrue[i] - C[i]) * (Ctrue[i] - C[i]);
             Fnorm = sqrt(Fnorm);
@@ -158,23 +163,29 @@ int main(int argc, char **argv) {
             A = (double *) calloc(sizeAB, sizeof(double));
             B = (double *) calloc(sizeAB, sizeof(double));
             C = (double *) calloc(sizeC, sizeof(double));
-            double *nextB = (double *) calloc(sizeAB, sizeof(double));
+            double *nextB = (double *) calloc(sizeAB, sizeof(double)); // buffer for next col
             MPI_Barrier(MPI_COMM_WORLD);
             timing(&wcs, &ct);
             MPI_Irecv(A, BLOCK_LEN(rowIndex, blocks[rank]), MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &recvRequest[0]);
             MPI_Irecv(&colIndex, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, &recvRequest[1]);
             MPI_Irecv(B, sizeAB, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &recvRequest[2]);
+            // Receive row data, have to wait. Equvallent to blocking, but doesn't affect performance
             MPI_Wait(&recvRequest[0], &status);
             MPI_Wait(&recvRequest[1], &status);
             MPI_Wait(&recvRequest[2], &status);
             MPI_Get_count(&status, MPI_DOUBLE, &recvColLen);
             for (int i = 1; i < size; i++) {
+                // Send col to next node
                 MPI_Isend(&colIndex, 1, MPI_INT, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[0]);
                 MPI_Isend(B, recvColLen, MPI_DOUBLE, (rank + 1) % size, 1, MPI_COMM_WORLD, &sendRequest[1]);
+                // Recv col from prev node
                 MPI_Irecv(&nextColIndex, 1, MPI_INT, rank - 1, 1, MPI_COMM_WORLD, &recvRequest[0]);
                 MPI_Irecv(nextB, sizeAB, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &recvRequest[1]);
+                // Key part for generalization, determine if it's the last block or not.
+                // If this is the last block, need to take all the rest part.
                 int trueBlockSize = blockSize;
                 if (BLOCK_LEN(colIndex, blockSize) < recvColLen) trueBlockSize = N - (size - 1) * blockSize;
+                // Do the calculation while recving next block, key part of non-blocking implementation.
                 compTime += block_matmul(A, B, C, rowIndex, colIndex, blocks[rank], trueBlockSize, N);                
                 MPI_Wait(&recvRequest[0], &status);
                 MPI_Wait(&recvRequest[1], &status);
@@ -182,7 +193,6 @@ int main(int argc, char **argv) {
                 MPI_Wait(&sendRequest[0], &status);
                 MPI_Wait(&sendRequest[1], &status);
                 colIndex = nextColIndex;
-                //B = nextB;
                 swap(&B, &nextB);
             }
             int trueBlockSize = blockSize;
@@ -206,6 +216,7 @@ int main(int argc, char **argv) {
     free(blocks);
 }
 
+// Do matrix multiplication for certain block
 double block_matmul(double *A, double *B, double *C, int rowIndex, int colIndex, int rowBlockSize, int colBlockSize, int N) {
     double wctime0, wctime1, cputime;
     timing(&wctime0, &cputime);

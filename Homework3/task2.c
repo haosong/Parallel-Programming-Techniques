@@ -44,19 +44,20 @@ int main(int argc, char **argv) {
             A = (double *) calloc(sizeAB, sizeof(double));
             B = (double *) calloc(sizeAB, sizeof(double));
             C = (double *) calloc(sizeC, sizeof(double));
+
+            // Generate A and B
             srand(12345);
             for (int i = 0; i < sizeAB; i++) A[i] = ((double) rand() / (double) RAND_MAX);
             for (int i = 0; i < sizeAB; i++) B[i] = ((double) rand() / (double) RAND_MAX);
             MPI_Barrier(MPI_COMM_WORLD);
 
-            // Send the permanent row to all workers
+            // Send the permanent row alignment to all workers
             timing(&wcs, &ct);
             for (int i = 1; i < size; i++) {
                 int rowIndex = i * blockSize;
                 int length = BLOCK_LEN(rowIndex, blockSize);
                 MPI_Send(A + rowIndex * (rowIndex + 1) / 2, length, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
             }
-
             // Send column to all workers
             for (int i = 1; i < size; i++) {
                 int colIndex = i * blockSize;
@@ -64,24 +65,23 @@ int main(int argc, char **argv) {
                 MPI_Send(&colIndex, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
                 MPI_Send(B + colIndex * (colIndex + 1) / 2, length, MPI_DOUBLE, i, 1, MPI_COMM_WORLD);
             }
-
             // Do the calculation on currant master node
             int rowIndex = 0;
             int colIndex = 0;
             double *col = B;
             compTime += block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
-
             // Send column to next node, receive column from prev node
             for (int i = 1; i < size; i++) {
+                // Send col to next node
                 MPI_Send(&colIndex, 1, MPI_INT, rank + 1, 1, MPI_COMM_WORLD);
                 MPI_Send(col, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
+                // Recv col from prev node
                 MPI_Recv(&colIndex, 1, MPI_INT, size - 1, 1, MPI_COMM_WORLD, &status);
                 MPI_Recv(col, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, size - 1, 1, MPI_COMM_WORLD, &status);
                 compTime += block_matmul(A, col, C, rowIndex, colIndex, blockSize, N);
             }
             free(A);
             free(B);
-
             // Collect results from workers
             for (int i = 1; i < size; i++)
                 MPI_Recv(C + i * blockSize * N, blockSize * N, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &status);
@@ -106,10 +106,9 @@ int main(int argc, char **argv) {
             int colIndex;
             int rowIndex = blockSize * rank;
             A = (double *) calloc(sizeAB, sizeof(double));
-            B = (double *) calloc(sizeAB, sizeof(double)); // Most elements containing in the last block
+            B = (double *) calloc(sizeAB, sizeof(double));
             C = (double *) calloc(sizeC, sizeof(double));
-            double *nextB;
-            nextB = (double *) calloc(sizeAB, sizeof(double));
+            double *nextB = (double *) calloc(sizeAB, sizeof(double)); // buffer for next col
 
             MPI_Barrier(MPI_COMM_WORLD);
             timing(&wcs, &ct);
@@ -120,8 +119,10 @@ int main(int argc, char **argv) {
 
             for (int i = 1; i < size; i++) {
                 int nextColIndex;
+                // Recv col from prev node
                 MPI_Recv(&nextColIndex, 1, MPI_INT, rank - 1, 1, MPI_COMM_WORLD, &status);
                 MPI_Recv(nextB, BLOCK_LEN(nextColIndex, blockSize), MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
+                // Send col to next node
                 MPI_Send(&colIndex, 1, MPI_INT, (rank + 1) % size, 1, MPI_COMM_WORLD);
                 MPI_Send(B, BLOCK_LEN(colIndex, blockSize), MPI_DOUBLE, (rank + 1) % size, 1, MPI_COMM_WORLD);
                 colIndex = nextColIndex;
