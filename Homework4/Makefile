@@ -6,10 +6,14 @@
 # This Makefile will only work if executed on a GPU node.
 #
 
+TIMINGDIR = /home/fas/cpsc424/ahs3/utils/timing
+
+CC = icc
+CFLAGS = -g -O3 -xHost -fno-alias -std=c99 -I$(TIMINGDIR)
+
 CUDAPATH = /gpfs/apps/hpc/GPU/Cuda/8.0
 
 NVCC = $(CUDAPATH)/bin/nvcc
-
 NVCCFLAGS = -I$(CUDAPATH)/include -O3
 
 LFLAGS = -L$(CUDAPATH)/lib64 -lcuda -lcudart -lm
@@ -20,10 +24,16 @@ GENCODE = $(GENCODE_SM35)
 
 .SUFFIXES : .cu .ptx
 
-BINARIES = matmul
+BINARIES = matmul serial
+
+serial:	serial.o $(TIMINGDIR)/timing.o
+	$(CC) -o $@ $(CFLAGS) $^
 
 matmul: matmul.o
 	$(NVCC) $(GENCODE) $(LFLAGS) -o $@ $<
+
+.c.o:
+	$(CC) $(CFLAGS) -c $<
 
 .cu.o:
 	$(NVCC) $(GENCODE) $(NVCCFLAGS) -o $@ -c $<

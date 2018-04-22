@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     cpu_matrixmult(a, b, c, n, m, p); // do calculation on host (NOTE: This computes the diff with GPU result.)
     timing(&wce, &ct);
 
-    printf("Time to calculate results on CPU: %f ms.\n", wce - wcs); // exec. time
+    printf("Time to calculate results on CPU: %f s.\n", wce - wcs); // exec. time
 
     // -------------- clean up ---------------------------------------
     free(a);
