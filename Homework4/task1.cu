@@ -44,11 +44,13 @@ int main(int argc, char *argv[]) {
 
   int gpucount = 0; // Count of available GPUs
   int gpunum = 0; // Device number to use
+  int Grid_Dim_m = 1, Grid_Dim_n = 1; //Grid dimension, x and y, square
   int Block_Dim = 1; //Block dimension, x and y, square
 
   int n, m, p; // matrix dimension
   FP *a,*b,*c;
   FP *dev_a, *dev_b, *dev_c;
+  int size_a, size_b, size_c;
 
   cudaEvent_t start, stop; // using cuda events to measure time
   float elapsed_time_ms; // which is applicable for asynchronous code also
@@ -79,21 +81,22 @@ int main(int argc, char *argv[]) {
     printf("Error, too many threads in block\n");
     exit (-1);
   }
-  int Grid_Dim_m = (m - 1) / Block_Dim + 1;
-  int Grid_Dim_n = (n - 1) / Block_Dim + 1;
+
+  Grid_Dim_m = (m - 1) / Block_Dim + 1;
+  Grid_Dim_n = (n - 1) / Block_Dim + 1;
 
   cudaSetDevice(gpunum);
   printf("Using device %d\n",gpunum);
   
-  printf("Matrix Dimension = %d\n",n);
+  printf("Matrix Dimension = [%d, %d, %d]\n",n,m,p);
   printf("Block_Dim = %d, Grid_Dim[m, n] = [%d, %d]\n",Block_Dim,Grid_Dim_m,Grid_Dim_n);
 
   dim3 Grid(Grid_Dim_m, Grid_Dim_n); //Grid structure
   dim3 Block(Block_Dim, Block_Dim); //Block structure
   
-  int size_a = n * p * sizeof(FP);
-  int size_b = p * m * sizeof(FP);
-  int size_c = n * m * sizeof(FP);
+  size_a = n * p * sizeof(FP);
+  size_b = p * m * sizeof(FP);
+  size_c = n * m * sizeof(FP);
   a = (FP *) malloc(size_a); // dynamically allocated memory for arrays on host
   b = (FP *) malloc(size_b);
   c = (FP *) malloc(size_c); // results from GPU
