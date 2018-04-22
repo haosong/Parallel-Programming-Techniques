@@ -30,6 +30,8 @@ serial:	serial.o $(TIMINGDIR)/timing.o
 	$(CC) -o $@ $(CFLAGS) $^
 
 task1: task1.o
+	$(NVCC) $(GENCODE) $(LFLAGS) -o $@ $<
+
 matmul: matmul.o
 	$(NVCC) $(GENCODE) $(LFLAGS) -o $@ $<
 
