@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
      printf("Device count = %d\n",gpucount);
   }
 
-  if (argc!=6) {
+  if (argc!=5) {
     printf("Usage: matmul <matrix dim n> <matrix dim m> <matrix dim p> <block dim>\n");
     exit (-1);
   }
@@ -147,13 +147,13 @@ int main(int argc, char *argv[]) {
   // cudaEventSynchronize(start); // not needed
 
 
-  cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
+  //cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
 
   cudaEventRecord(stop, 0); // instrument code to measue end time
   cudaEventSynchronize(stop);
   cudaEventElapsedTime(&elapsed_time_ms, start, stop );
 
-  printf("Time to calculate results on CPU: %f ms.\n", elapsed_time_ms); // exec. time
+  //printf("Time to calculate results on CPU: %f ms.\n", elapsed_time_ms); // exec. time
 
 // ------------------- check device creates correct results -----------------
 
