@@ -10,12 +10,12 @@ __global__ void gpu_matrixmult(FP *a,FP *b, FP *c, int n, int m, int p) {
   int col = threadIdx.x + blockDim.x * blockIdx.x;
   int row = threadIdx.y + blockDim.y * blockIdx.y;
 
-  int indexb = col;
-  int index = row * m + col;
+  size_t indexb = col;
+  size_t index = row * m + col;
   
   if(col < m && row < n) {
     c[index] = 0.;
-    for (int indexa = row*p; indexa < (row*p + p); indexa++, indexb+=m) 
+    for (size_t indexa = row*p; indexa < (row*p + p); indexa++, indexb+=m) 
       c[index] += a[indexa]*b[indexb];
   }
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
   int n, m, p; // matrix dimension
   FP *a,*b,*c;
   FP *dev_a, *dev_b, *dev_c;
-  int size_a, size_b, size_c;
+  size_t size_a, size_b, size_c;
 
   cudaEvent_t start, stop; // using cuda events to measure time
   float elapsed_time_ms; // which is applicable for asynchronous code also
@@ -100,6 +100,9 @@ int main(int argc, char *argv[]) {
   a = (FP *) malloc(size_a); // dynamically allocated memory for arrays on host
   b = (FP *) malloc(size_b);
   c = (FP *) malloc(size_c); // results from GPU
+  printf("size_a = %zu", size_a, ptrdiff);
+  printf("size_b = %zu", size_b, ptrdiff);
+  printf("size_c = %zu", size_c, ptrdiff);
 
   srand(12345);
   // int p = n; //Used here only to illustrate proper initialization for non-square case
