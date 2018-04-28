@@ -24,7 +24,7 @@ __global__ void gpu_matrixmult(FP *a,FP *b, FP *c, int n, int m, int p) {
 
 void cpu_matrixmult(FP *a,FP *b, FP *c, int n, int m, int p) {
 
-  int index, indexa, indexb;
+  size_t index, indexa, indexb;
   FP cvalue;
   for(int col=0;col < m; col++)
     for(int row=0;row < n; row++) {
@@ -32,7 +32,7 @@ void cpu_matrixmult(FP *a,FP *b, FP *c, int n, int m, int p) {
       index = row * m + col;
       cvalue = 0.;
       for (indexa = row*p; indexa < (row*p + p); indexa++, indexb+=m) 
-  cvalue += a[indexa]*b[indexb];
+        cvalue += a[indexa]*b[indexb];
       c[index] -= cvalue; //NOTE: This calculates the diff between CPU and GPU computations.
     }
 }
@@ -100,9 +100,9 @@ int main(int argc, char *argv[]) {
   a = (FP *) malloc(size_a); // dynamically allocated memory for arrays on host
   b = (FP *) malloc(size_b);
   c = (FP *) malloc(size_c); // results from GPU
-  printf("size_a = %zu", size_a, ptrdiff);
-  printf("size_b = %zu", size_b, ptrdiff);
-  printf("size_c = %zu", size_c, ptrdiff);
+  printf("size_a = %zu\n", size_a);
+  printf("size_b = %zu\n", size_b);
+  printf("size_c = %zu\n", size_c);
 
   srand(12345);
   // int p = n; //Used here only to illustrate proper initialization for non-square case
@@ -150,30 +150,33 @@ int main(int argc, char *argv[]) {
   // cudaEventSynchronize(start); // not needed
 
 
-  //cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
+  cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
 
   cudaEventRecord(stop, 0); // instrument code to measue end time
   cudaEventSynchronize(stop);
   cudaEventElapsedTime(&elapsed_time_ms, start, stop );
 
-  //printf("Time to calculate results on CPU: %f ms.\n", elapsed_time_ms); // exec. time
+  printf("Time to calculate results on CPU: %f ms.\n", elapsed_time_ms); // exec. time
 
 // ------------------- check device creates correct results -----------------
-
   double error, suma, sumb, sumc, ai, bi, ci;
   suma = 0.; sumb = 0; sumc = 0;
-  for(i=0;i < n*n;i++) {
+  for(size_t i=0;i<n*p;i++) {
     ai = (double) a[i];
+    suma += ai * ai;
+  }
+  for(size_t i=0;i<p*m;i++) {
     bi = (double) b[i];
+    sumb += bi * bi;
+  }
+  for(size_t i=0;i<n*m;i++) {
     ci = (double) c[i];
-    suma += ai*ai;
-    sumb += bi*bi;
     sumc += ci*ci;
   }
   suma = sqrt(suma);
   sumb = sqrt(sumb);
   sumc = sqrt(sumc);
-  error =  sumc/(n*suma*sumb);
+  error = sumc/(sqrt(n*m)*suma*sumb);
   printf("Scaled error between GPU and CPU: %e\n", error);
 
 // -------------- clean up ---------------------------------------
