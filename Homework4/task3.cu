@@ -14,22 +14,27 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
   }
 }
 
-__global__ void gpu_matrixmult(float* a, float* b, float* c, int n, int m, int p) {
+__global__ void gpu_matrixmult(float* a, float* b, float* c, int n, int m, int p, int N) {
 
-  __shared__ FP atile[TW][TW], btile[TW][TW];
-  int tx = threadIdx.x; int ty = threadIdx.y; FP cvalue = 0;
-  int col = blockIdx.x*TW + tx;
-  int row = blockIdx.y*TW + ty;
+  __shared__ FP atile[TW][TW], btile[N][TW][TW];
+  int tx = threadIdx.x; int ty = threadIdx.y; FP cvalue[N]; int col[N];
+  for (int i = 0; i < N; i++) {
+    col[i] = tx + blockDim.x * (blockIdx.x * N + i);
+    cvalue[i] = 0;
+  }
+  int row = ty + blockDim.y * blockIdx.y;
   
-  for (int k = 0; k < (TW + p - 1)/TW; k++) {
+  for (int k = 0; k < p / TW; k++) {
     atile[ty][tx] = (k*TW + tx < p && row < n) ? a[row*p + k*TW + tx] : 0.0;
-    btile[ty][tx] = (k*TW + ty < p && col < m) ? b[(k*TW + ty)*m + col] : 0.0;
+    for(int i = 0; i < N; i++)
+      btile[i][ty][tx] = (k*TW + ty < p && col[i] < m) ? b[(k*TW + ty)*m + col] : 0.0;
     __syncthreads();
-    for (int n = 0; n < TW; ++n) cvalue += atile[ty][n] * btile[n][tx];
+    for(int i = 0; i < N; i++)
+      for (int n = 0; n < TW; ++n) cvalue[i] += atile[ty][n] * btile[i][n][tx];
     __syncthreads();
   }
-  
-  if (row < n && col < m) c[row * m + col] = cvalue;
+  for(int i = 0; i < N; i++) 
+    if (row < n && col[i] < m) c[row * m + col[i]] = cvalue[i];
 
 }
 
@@ -78,14 +83,15 @@ int main(int argc, char *argv[]) {
      printf("Device count = %d\n",gpucount);
   }
 
-  if (argc!=5) {
-    printf("Usage: matmul <matrix dim n> <matrix dim m> <matrix dim p> <block dim>\n");
+  if (argc!=6) {
+    printf("Usage: matmul <matrix dim: n> <matrix dim: m> <matrix dim: p> <block dim> <adjacent tiles>\n");
     exit (-1);
   }
 
   n = atoi(argv[1]);
   m = atoi(argv[2]);
   p = atoi(argv[3]);
+  N = atoi(argv[5]);
 
   Block_Dim = atoi(argv[4]); // Square block
   if (Block_Dim*Block_Dim > 1024) {
@@ -152,7 +158,7 @@ int main(int argc, char *argv[]) {
   cudaEventRecord(start, 0);
   // cudaEventSynchronize(start); // not needed
 
-  gpu_matrixmult<<<Grid,Block>>>(dev_a,dev_b,dev_c,n,m,p);
+  gpu_matrixmult<<<Grid,Block>>>(dev_a,dev_b,dev_c,n,m,p,N);
 
   cudaEventRecord(stop, 0); // instrument code to measure end time
   cudaEventSynchronize(stop);
