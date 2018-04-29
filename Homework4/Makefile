@@ -24,12 +24,15 @@ GENCODE = $(GENCODE_SM35)
 
 .SUFFIXES : .cu .ptx
 
-BINARIES = matmul serial task1
+BINARIES = matmul serial task1 task2
 
 serial:	serial.o $(TIMINGDIR)/timing.o
 	$(CC) -o $@ $(CFLAGS) $^
 
 task1: task1.o
+	$(NVCC) $(GENCODE) $(LFLAGS) -o $@ $<
+
+task2: task2.o
 	$(NVCC) $(GENCODE) $(LFLAGS) -o $@ $<
 
 matmul: matmul.o

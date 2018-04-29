@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
   // cudaEventSynchronize(start); // not needed
 
 
-  cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
+  //cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
 
   cudaEventRecord(stop, 0); // instrument code to measue end time
   cudaEventSynchronize(stop);
