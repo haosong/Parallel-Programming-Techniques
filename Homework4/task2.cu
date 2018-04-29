@@ -6,6 +6,14 @@
 #include <stdlib.h>
 #include <math.h>
 
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true) {
+  if (code != cudaSuccess)  {
+    fprintf(stderr,"GPU Error: %s %s %d\n", cudaGetErrorString(code), file, line);
+    if (abort) exit(code);
+  }
+}
+
 __global__ void gpu_matrixmult(FP *a,FP *b, FP *c, int n, int m, int p) {
 
   __shared__ FP atile[TW][TW], btile[TW][TW];
@@ -124,12 +132,12 @@ int main(int argc, char *argv[]) {
 
   // ------------- COMPUTATION DONE ON GPU ----------------------------
 
-  cudaMalloc((void**)&dev_a, size_a); // allocate memory on device
-  cudaMalloc((void**)&dev_b, size_b);
-  cudaMalloc((void**)&dev_c, size_c);
+  gpuErrchk(cudaMalloc((void**)&dev_a, size_a)); // allocate memory on device
+  gpuErrchk(cudaMalloc((void**)&dev_b, size_b));
+  gpuErrchk(cudaMalloc((void**)&dev_c, size_c));
 
-  cudaMemcpy(dev_a, a , size_a ,cudaMemcpyHostToDevice);
-  cudaMemcpy(dev_b, b , size_b ,cudaMemcpyHostToDevice);
+  gpuErrchk(cudaMemcpy(dev_a, a , size_a ,cudaMemcpyHostToDevice));
+  gpuErrchk(cudaMemcpy(dev_b, b , size_b ,cudaMemcpyHostToDevice));
 
   cudaEventCreate(&start); // instrument code to measure start time
   cudaEventCreate(&stop);
@@ -143,7 +151,7 @@ int main(int argc, char *argv[]) {
   cudaEventSynchronize(stop);
   cudaEventElapsedTime(&elapsed_time_ms, start, stop );
 
-  cudaMemcpy(c,dev_c, size_c ,cudaMemcpyDeviceToHost);
+  gpuErrchk(cudaMemcpy(c,dev_c, size_c ,cudaMemcpyDeviceToHost));
 
   printf("Time to calculate results on GPU: %f ms.\n", elapsed_time_ms); // exec. time
 
