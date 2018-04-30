@@ -75,8 +75,8 @@ int main(int argc, char *argv[]) {
      printf("Device count = %d\n",gpucount);
   }
 
-  if (argc!=5) {
-    printf("Usage: matmul <matrix dim n> <matrix dim m> <matrix dim p> <block dim>\n");
+  if (argc < 5 || argc > 6) {
+    printf("Usage: matmul <matrix dim n> <matrix dim m> <matrix dim p> <block dim> <optional: CPU calculation or not>\n");
     exit (-1);
   }
 
@@ -153,39 +153,40 @@ int main(int argc, char *argv[]) {
 
   // ------------- COMPUTATION DONE ON HOST CPU ----------------------------
   // DEBUGGING USE ONLY (AND FOR LIMITED NUMBERS OF TIMING RUNS)
+  if (argc == 6) {
+    cudaEventRecord(start, 0); // use same timing
+    // cudaEventSynchronize(start); // not needed
 
-  cudaEventRecord(start, 0); // use same timing
-  // cudaEventSynchronize(start); // not needed
 
+    cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
 
-  cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
+    cudaEventRecord(stop, 0); // instrument code to measue end time
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&elapsed_time_ms, start, stop );
 
-  cudaEventRecord(stop, 0); // instrument code to measue end time
-  cudaEventSynchronize(stop);
-  cudaEventElapsedTime(&elapsed_time_ms, start, stop );
+    printf("Time to calculate results on CPU: %f ms.\n", elapsed_time_ms); // exec. time
 
-  printf("Time to calculate results on CPU: %f ms.\n", elapsed_time_ms); // exec. time
-
-// ------------------- check device creates correct results -----------------
-  double error, suma, sumb, sumc, ai, bi, ci;
-  suma = 0.; sumb = 0; sumc = 0;
-  for(size_t i=0;i<n*p;i++) {
-    ai = (double) a[i];
-    suma += ai * ai;
+  // ------------------- check device creates correct results -----------------
+    double error, suma, sumb, sumc, ai, bi, ci;
+    suma = 0.; sumb = 0; sumc = 0;
+    for(size_t i=0;i<n*p;i++) {
+      ai = (double) a[i];
+      suma += ai * ai;
+    }
+    for(size_t i=0;i<p*m;i++) {
+      bi = (double) b[i];
+      sumb += bi * bi;
+    }
+    for(size_t i=0;i<n*m;i++) {
+      ci = (double) c[i];
+      sumc += ci*ci;
+    }
+    suma = sqrt(suma);
+    sumb = sqrt(sumb);
+    sumc = sqrt(sumc);
+    error = sumc/(sqrt(n*m)*suma*sumb);
+    printf("Scaled error between GPU and CPU: %e\n", error);
   }
-  for(size_t i=0;i<p*m;i++) {
-    bi = (double) b[i];
-    sumb += bi * bi;
-  }
-  for(size_t i=0;i<n*m;i++) {
-    ci = (double) c[i];
-    sumc += ci*ci;
-  }
-  suma = sqrt(suma);
-  sumb = sqrt(sumb);
-  sumc = sqrt(sumc);
-  error = sumc/(sqrt(n*m)*suma*sumb);
-  printf("Scaled error between GPU and CPU: %e\n", error);
 
 // -------------- clean up ---------------------------------------
 

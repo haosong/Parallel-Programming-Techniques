@@ -131,8 +131,8 @@ int main(int argc, char *argv[]) {
      printf("Device count = %d\n",gpucount);
   }
 
-  if (argc!=6) {
-    printf("Usage: matmul <matrix dim: n> <matrix dim: m> <matrix dim: p> <Block/TW dim> <Adjacent Tiles NTB>\n");
+  if (argc < 6 || argc > 7) {
+    printf("Usage: matmul <matrix dim: n> <matrix dim: m> <matrix dim: p> <Block/TW dim> <Adjacent Tiles NTB> <optional: CPU calculation or not>\n");
     exit (-1);
   }
 
@@ -239,27 +239,27 @@ int main(int argc, char *argv[]) {
 
   // ------------- COMPUTATION DONE ON HOST CPU ----------------------------
   // DEBUGGING USE ONLY (AND FOR LIMITED NUMBERS OF TIMING RUNS)
+  if (argc == 7) {
+    cudaEventRecord(start, 0); // use same timing
+    // cudaEventSynchronize(start); // not needed
 
-  cudaEventRecord(start, 0); // use same timing
-  // cudaEventSynchronize(start); // not needed
 
+    cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
 
-  //cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
+    /*printf("c1 = \n");
+    for(i=0;i < n;i++) {
+      for(j=0;j < m;j++) {
+          printf("%.5f\t", c[i * m + j]);
+      }
+      printf("\n");
+    }*/
 
-  /*printf("c1 = \n");
-  for(i=0;i < n;i++) {
-    for(j=0;j < m;j++) {
-        printf("%.5f\t", c[i * m + j]);
-    }
-    printf("\n");
-  }*/
+    cudaEventRecord(stop, 0); // instrument code to measue end time
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&elapsed_time_ms, start, stop );
 
-  cudaEventRecord(stop, 0); // instrument code to measue end time
-  cudaEventSynchronize(stop);
-  cudaEventElapsedTime(&elapsed_time_ms, start, stop );
-
-  printf("Time to calculate results on CPU: %f ms.\n", elapsed_time_ms); // exec. time
-
+    printf("Time to calculate results on CPU: %f ms.\n", elapsed_time_ms); // exec. time
+  }
 // ------------------- check device creates correct results -----------------
   double error, suma, sumb, sumc, ai, bi, ci;
   suma = 0.; sumb = 0; sumc = 0;
