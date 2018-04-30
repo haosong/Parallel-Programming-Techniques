@@ -29,8 +29,8 @@ int main(int argc, char *argv[]) {
     }
 
     n = atoi(argv[1]);
-    m = atoi(argv[1]);
-    p = atoi(argv[1]);
+    m = atoi(argv[2]);
+    p = atoi(argv[3]);
     printf("Matrix Dimension n = %d\n", n);
     printf("Matrix Dimension m = %d\n", m);
     printf("Matrix Dimension p = %d\n", p);
@@ -48,10 +48,10 @@ int main(int argc, char *argv[]) {
 
     for (i = 0; i < p; i++)
         for (j = 0; j < m; j++) {
-            b[i * n + j] = (FP) rand() / (FP) RAND_MAX;
-            // b[i * n + j] = (FP) i+j; // may be helpful for debugging
+            b[i * m + j] = (FP) rand() / (FP) RAND_MAX;
+            //b[i * m + j] = (FP) i+j; // may be helpful for debugging
         }
-
+    
     // ------------- COMPUTATION DONE ON HOST CPU ----------------------------
     timing(&wcs, &ct);
     cpu_matrixmult(a, b, c, n, m, p); // do calculation on host (NOTE: This computes the diff with GPU result.)
