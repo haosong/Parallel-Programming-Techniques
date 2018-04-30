@@ -1,5 +1,6 @@
 #define FP float
-#define TW 32
+#define TW 3
+#define NTB 2
 
 #include <stdio.h>
 #include <cuda.h>
@@ -14,29 +15,34 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
   }
 }
 
-__global__ void gpu_matrixmult(float* a, float* b, float* c, int n, int m, int p, int N) {
 
-  __shared__ FP atile[TW][TW], btile[N][TW][TW];
-  int tx = threadIdx.x; int ty = threadIdx.y; FP cvalue[N]; int col[N];
-  for (int i = 0; i < N; i++) {
-    col[i] = tx + blockDim.x * (blockIdx.x * N + i);
-    cvalue[i] = 0;
+__global__ void gpu_matrixmult(FP *a, FP *b, FP *c, int n, int m, int p, int TW1, int NTB1) {
+
+  extern __shared__ FP bigarray[];
+  FP *atile = &bigarray[0], *btile = &bigarray[TW * TW], *cvalue = &bigarray[(NTB + 1) * TW * TW];
+  int tx = threadIdx.x; int ty = threadIdx.y;
+  int row = ty + TW * blockIdx.y;
+
+  for (int kt = 0; kt < NTB; kt++) cvalue[kt * TW * TW + ty * TW + tx] = 0.;
+
+  for (int k = 0; k < (TW + p - 1)/TW; k++) {
+    atile[ty * TW + tx] = (k*TW + tx < p && row < n) ? a[row*p + k*TW + tx] : 0.;
+    for (int kt = 0; kt < NTB; kt++) {
+      int col = tx + TW * (blockIdx.x + kt);
+      btile[ty * TW + tx] = (k*TW + ty < p && col < m) ? b[(k*TW + ty)*m + col] : 0.;
+      __syncthreads();
+      for (int i = 0; i < TW; ++i) cvalue[kt * TW * TW + ty * TW + tx] += atile[ty * TW + i] * btile[i * TW + tx];
+      __syncthreads();
+    }
   }
-  int row = ty + blockDim.y * blockIdx.y;
-  
-  for (int k = 0; k < p / TW; k++) {
-    atile[ty][tx] = (k*TW + tx < p && row < n) ? a[row*p + k*TW + tx] : 0.0;
-    for(int i = 0; i < N; i++)
-      btile[i][ty][tx] = (k*TW + ty < p && col[i] < m) ? b[(k*TW + ty)*m + col] : 0.0;
-    __syncthreads();
-    for(int i = 0; i < N; i++)
-      for (int n = 0; n < TW; ++n) cvalue[i] += atile[ty][n] * btile[i][n][tx];
-    __syncthreads();
+
+  for(int kt = 0; kt < NTB; kt++) {
+    int col = tx + TW * (blockIdx.x + kt);
+    if (row < n && col < m) c[row * m + col] = cvalue[kt * TW * TW + ty * TW + tx];
   }
-  for(int i = 0; i < N; i++) 
-    if (row < n && col[i] < m) c[row * m + col[i]] = cvalue[i];
 
 }
+
 
 void cpu_matrixmult(FP *a,FP *b, FP *c, int n, int m, int p) {
 
@@ -91,9 +97,10 @@ int main(int argc, char *argv[]) {
   n = atoi(argv[1]);
   m = atoi(argv[2]);
   p = atoi(argv[3]);
-  N = atoi(argv[5]);
+  //int NTB = atoi(argv[5]);
 
   Block_Dim = atoi(argv[4]); // Square block
+  // int TW = Block_Dim;
   if (Block_Dim*Block_Dim > 1024) {
     printf("Error, too many threads in block\n");
     exit (-1);
@@ -123,25 +130,29 @@ int main(int argc, char *argv[]) {
 
   srand(12345);
   // int p = n; //Used here only to illustrate proper initialization for non-square case
-  // printf("a = \n");
+  printf("a = \n");
   for(i=0;i < n;i++) {
     for(j=0;j < p;j++) {
-      a[i * p + j] = (FP) rand() / (FP) RAND_MAX;
-      // a[i * p + j] = (FP) i+j; // may be helpful for debugging
-      // printf("%.5f\t", a[i * p + j]); 
+      //a[i * p + j] = (FP) rand() / (FP) RAND_MAX;
+      a[i * p + j] = (FP) i+j; // may be helpful for debugging
+      printf("%.5f\t", a[i * p + j]); 
     }
-    // printf("\n");
+     printf("\n");
   }
 
-  // printf("b = \n");
+  printf("b = \n");
   for(i=0;i < p;i++) {
     for(j=0;j < m;j++) {
-      b[i * m + j] = (FP) rand() / (FP) RAND_MAX;
-      // b[i * m + j] = (FP) i+j; // may be helpful for debugging
-      // printf("%.5f\t", b[i * m + j]);
+      //b[i * m + j] = (FP) rand() / (FP) RAND_MAX;
+       b[i * m + j] = (FP) i+j; // may be helpful for debugging
+       printf("%.5f\t", b[i * m + j]);
     }
-    // printf("\n");
+     printf("\n");
   }
+  
+  for(i=0;i < n;i++)
+    for(j=0;j < m;j++)
+      c[i * m + j] = 0.;
 
   // ------------- COMPUTATION DONE ON GPU ----------------------------
 
@@ -158,7 +169,8 @@ int main(int argc, char *argv[]) {
   cudaEventRecord(start, 0);
   // cudaEventSynchronize(start); // not needed
 
-  gpu_matrixmult<<<Grid,Block>>>(dev_a,dev_b,dev_c,n,m,p,N);
+  size_t Ns = ((2 * NTB + 1) * TW * TW) * sizeof(FP);
+  gpu_matrixmult<<<Grid,Block,Ns>>>(dev_a,dev_b,dev_c,n,m,p,TW, NTB);
 
   cudaEventRecord(stop, 0); // instrument code to measure end time
   cudaEventSynchronize(stop);
@@ -166,13 +178,13 @@ int main(int argc, char *argv[]) {
 
   gpuErrchk(cudaMemcpy(c,dev_c, size_c ,cudaMemcpyDeviceToHost));
 
-  /*printf("c0 = \n");
+  printf("c0 = \n");
   for(i=0;i < n;i++) {
     for(j=0;j < m;j++) {
         printf("%.5f\t", c[i * m + j]);
     }
     printf("\n");
-  }*/
+  }
 
   printf("Time to calculate results on GPU: %f ms.\n", elapsed_time_ms); // exec. time
 
@@ -185,13 +197,13 @@ int main(int argc, char *argv[]) {
 
   cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
 
-  /*printf("c1 = \n");
+  printf("c1 = \n");
   for(i=0;i < n;i++) {
     for(j=0;j < m;j++) {
         printf("%.5f\t", c[i * m + j]);
     }
     printf("\n");
-  }*/
+  }
 
   cudaEventRecord(stop, 0); // instrument code to measue end time
   cudaEventSynchronize(stop);
