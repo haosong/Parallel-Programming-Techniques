@@ -26,6 +26,8 @@ GENCODE = $(GENCODE_SM35)
 
 BINARIES = matmul serial task1 task2 task3
 
+all: $(BINARIES)
+
 serial:	serial.o $(TIMINGDIR)/timing.o
 	$(CC) -o $@ $(CFLAGS) $^
 

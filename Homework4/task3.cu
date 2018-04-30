@@ -259,27 +259,28 @@ int main(int argc, char *argv[]) {
     cudaEventElapsedTime(&elapsed_time_ms, start, stop );
 
     printf("Time to calculate results on CPU: %f ms.\n", elapsed_time_ms); // exec. time
-  }
+  
 // ------------------- check device creates correct results -----------------
-  double error, suma, sumb, sumc, ai, bi, ci;
-  suma = 0.; sumb = 0; sumc = 0;
-  for(size_t i=0;i<n*p;i++) {
-    ai = (double) a[i];
-    suma += ai * ai;
+    double error, suma, sumb, sumc, ai, bi, ci;
+    suma = 0.; sumb = 0; sumc = 0;
+    for(size_t i=0;i<n*p;i++) {
+      ai = (double) a[i];
+      suma += ai * ai;
+    }
+    for(size_t i=0;i<p*m;i++) {
+      bi = (double) b[i];
+      sumb += bi * bi;
+    }
+    for(size_t i=0;i<n*m;i++) {
+      ci = (double) c[i];
+      sumc += ci*ci;
+    }
+    suma = sqrt(suma);
+    sumb = sqrt(sumb);
+    sumc = sqrt(sumc);
+    error = sumc/(sqrt(n*m)*suma*sumb);
+    printf("Scaled error between GPU and CPU: %e\n", error);
   }
-  for(size_t i=0;i<p*m;i++) {
-    bi = (double) b[i];
-    sumb += bi * bi;
-  }
-  for(size_t i=0;i<n*m;i++) {
-    ci = (double) c[i];
-    sumc += ci*ci;
-  }
-  suma = sqrt(suma);
-  sumb = sqrt(sumb);
-  sumc = sqrt(sumc);
-  error = sumc/(sqrt(n*m)*suma*sumb);
-  printf("Scaled error between GPU and CPU: %e\n", error);
 
 // -------------- clean up ---------------------------------------
 
