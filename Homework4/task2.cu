@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
   // cudaEventSynchronize(start); // not needed
 
 
-  cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
+  //cpu_matrixmult(a,b,c, n,m,p); // do calculation on host (NOTE: This computes the diff with GPU result.)
 
   /*printf("c1 = \n");
   for(i=0;i < n;i++) {
