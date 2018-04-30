@@ -1,5 +1,5 @@
 #define FP float
-#define TW 32
+// #define TW 32
 
 #include <stdio.h>
 #include <cuda.h>
@@ -14,18 +14,19 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
   }
 }
 
-__global__ void gpu_matrixmult(float* a, float* b, float* c, int n, int m, int p) {
-
-  __shared__ FP atile[TW][TW], btile[TW][TW];
+__global__ void gpu_matrixmult(FP* a, FP* b, FP* c, int n, int m, int p, int TW) {
+  extern __shared__ FP bigarray[];
+  FP *atile = &bigarray[0], *btile = &bigarray[TW * TW];
+  //__shared__ FP atile[TW][TW], btile[TW][TW];
   int tx = threadIdx.x; int ty = threadIdx.y; FP cvalue = 0;
   int col = blockIdx.x*TW + tx;
   int row = blockIdx.y*TW + ty;
   
   for (int k = 0; k < (TW + p - 1)/TW; k++) {
-    atile[ty][tx] = (k*TW + tx < p && row < n) ? a[row*p + k*TW + tx] : 0.0;
-    btile[ty][tx] = (k*TW + ty < p && col < m) ? b[(k*TW + ty)*m + col] : 0.0;
+    atile[ty * TW + tx] = (k*TW + tx < p && row < n) ? a[row*p + k*TW + tx] : 0.0;
+    btile[ty * TW + tx] = (k*TW + ty < p && col < m) ? b[(k*TW + ty)*m + col] : 0.0;
     __syncthreads();
-    for (int n = 0; n < TW; ++n) cvalue += atile[ty][n] * btile[n][tx];
+    for (int n = 0; n < TW; ++n) cvalue += atile[ty * TW + n] * btile[n * TW + tx];
     __syncthreads();
   }
   
@@ -88,6 +89,7 @@ int main(int argc, char *argv[]) {
   p = atoi(argv[3]);
 
   Block_Dim = atoi(argv[4]); // Square block
+  int TW = Block_Dim;
   if (Block_Dim*Block_Dim > 1024) {
     printf("Error, too many threads in block\n");
     exit (-1);
@@ -152,7 +154,8 @@ int main(int argc, char *argv[]) {
   cudaEventRecord(start, 0);
   // cudaEventSynchronize(start); // not needed
 
-  gpu_matrixmult<<<Grid,Block>>>(dev_a,dev_b,dev_c,n,m,p);
+  size_t Ns = 2 * TW * TW * sizeof(FP);
+  gpu_matrixmult<<<Grid,Block,Ns>>>(dev_a,dev_b,dev_c,n,m,p,TW);
 
   cudaEventRecord(stop, 0); // instrument code to measure end time
   cudaEventSynchronize(stop);
