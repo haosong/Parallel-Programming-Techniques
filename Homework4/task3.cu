@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
   printf("Using device %d\n",gpunum);
   
   printf("Matrix Dimension = [%d, %d, %d]\n",n,m,p);
-  printf("Block_Dim = %d, Grid_Dim[m, n] = [%d, %d]\n",Block_Dim,Grid_Dim_m,Grid_Dim_n);
+  printf("Block_Dim = %d, Grid_Dim[m, n] = [%d, %d], NTB = %d\n",Block_Dim,Grid_Dim_m,Grid_Dim_n,NTB);
 
   dim3 Grid(Grid_Dim_m, Grid_Dim_n); //Grid structure
   dim3 Block(Block_Dim, Block_Dim); //Block structure
