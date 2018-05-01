@@ -170,8 +170,6 @@ int main(int argc, char *argv[]) {
   // cudaEventSynchronize(start); // not needed
 
   size_t Ns = 2 * TW * TW * sizeof(FP);
-  //size_t Ns = ((NTB + 2) * TW * TW) * sizeof(FP);
-  printf("Ns = %zu\n", Ns);
   gpu_matrixmult<<<Grid,Block,Ns>>>(dev_a,dev_b,dev_c,n,m,p,TW, NTB);
 
   cudaEventRecord(stop, 0); // instrument code to measure end time
