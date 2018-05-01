@@ -5,11 +5,12 @@
 #include <stdlib.h>
 #include <math.h>
 
+// Output GPU Error Msg
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true) {
   if (code != cudaSuccess)  {
     fprintf(stderr,"GPU Error: %s %s %d\n", cudaGetErrorString(code), file, line);
-    if (abort) exit(code);
+    // if (abort) exit(code);
   }
 }
 
@@ -20,7 +21,7 @@ __global__ void gpu_matrixmult(FP *a,FP *b, FP *c, int n, int m, int p) {
 
   size_t indexb = col;
   size_t index = row * m + col;
-  
+  // Basically the same as matmul.cu except using n, m, p instead of square n.
   if(col < m && row < n) {
     c[index] = 0.;
     for (size_t indexa = row*p; indexa < (row*p + p); indexa++, indexb+=m) 
@@ -58,7 +59,7 @@ int main(int argc, char *argv[]) {
   int n, m, p; // matrix dimension
   FP *a,*b,*c;
   FP *dev_a, *dev_b, *dev_c;
-  size_t size_a, size_b, size_c;
+  size_t size_a, size_b, size_c; // Use size_t to avoid overflow
 
   cudaEvent_t start, stop; // using cuda events to measure time
   float elapsed_time_ms; // which is applicable for asynchronous code also
@@ -90,6 +91,7 @@ int main(int argc, char *argv[]) {
     exit (-1);
   }
 
+  // Calculate Grid Size
   Grid_Dim_m = (m - 1) / Block_Dim + 1;
   Grid_Dim_n = (n - 1) / Block_Dim + 1;
 
@@ -108,9 +110,9 @@ int main(int argc, char *argv[]) {
   a = (FP *) malloc(size_a); // dynamically allocated memory for arrays on host
   b = (FP *) malloc(size_b);
   c = (FP *) malloc(size_c); // results from GPU
-  printf("size_a = %zu\n", size_a);
-  printf("size_b = %zu\n", size_b);
-  printf("size_c = %zu\n", size_c);
+  // printf("size_a = %zu\n", size_a);
+  // printf("size_b = %zu\n", size_b);
+  // printf("size_c = %zu\n", size_c);
 
   srand(12345);
   // int p = n; //Used here only to illustrate proper initialization for non-square case

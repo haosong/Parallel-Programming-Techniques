@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+// Output GPU Error Msg
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true) {
   if (code != cudaSuccess)  {
@@ -17,70 +18,25 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 
 
 __global__ void gpu_matrixmult(FP *a, FP *b, FP *c, int n, int m, int p, int TW, int NTB) {
-/*
-  extern __shared__ FP bigarray[];
-  FP *atile = &bigarray[0], *btile = &bigarray[TW * TW], *cvalue = &bigarray[(NTB + 1) * TW * TW];
-  int tx = threadIdx.x; int ty = threadIdx.y;
-  int row = ty + TW * blockIdx.y;
-
-  for (int kt = 0; kt < NTB; kt++) cvalue[kt * TW * TW + ty * TW + tx] = 0.;
-
-  for (int k = 0; k < (TW + p - 1)/TW; k++) {
-    atile[ty * TW + tx] = (k*TW + tx < p && row < n) ? a[row*p + k*TW + tx] : 0.;
-    for (int kt = 0; kt < NTB; kt++) {
-       int col = tx + TW * (blockIdx.x + kt);
-       btile[kt * TW * TW + ty * TW + tx] = (k*TW + ty < p && col < m) ? b[(k*TW + ty)*m + col] : 0.;
-    }
-    for (int kt = 0; kt < NTB; kt++) {
-      //int col = tx + TW * (blockIdx.x + kt);
-      //btile[ty * TW + tx] = (k*TW + ty < p && col < m) ? b[(k*TW + ty)*m + col] : 0.;
-      __syncthreads();
-      for (int i = 0; i < TW; ++i) cvalue[kt * TW * TW + ty * TW + tx] += atile[ty * TW + i] * btile[kt * TW * TW + i * TW + tx];
-      __syncthreads();
-    }
-  }
-
-  for(int kt = 0; kt < NTB; kt++) {
-    int col = tx + TW * (blockIdx.x + kt);
-    if (row < n && col < m) c[row * m + col] = cvalue[kt * TW * TW + ty * TW + tx];
-  }
-*/
-
-/*  __shared__ FP atile[TW][TW], btile[TW][TW];
-  int tx = threadIdx.x; int ty = threadIdx.y; FP cvalue[NTB]; int col[NTB];
-  for (int kt = 0; kt < NTB; kt++) {
-    cvalue[kt] = 0.;
-    col[kt] = tx + TW * (blockIdx.x + kt);
-  }
-  int row = ty + TW * blockIdx.y;
-
-  for (int kt = 0; kt < NTB; kt++) {
-    FP ctemp = 0;
-    for (int k = 0; k < (TW + p - 1)/TW; k++) {
-      atile[ty][tx] = (k*TW + tx < p && row < n) ? a[row*p + k*TW + tx] : 0.0;
-      btile[ty][tx] = (k*TW + ty < p && col[kt] < m) ? b[(k*TW + ty)*m + col[kt]] : 0.0;
-      __syncthreads();
-      for (int i = 0; i < TW; ++i) ctemp += atile[ty][i] * btile[i][tx];
-      __syncthreads();
-    }
-    if (row < n && col[kt] < m) c[row * m + col[kt]] = ctemp;
-  }*/
-
+  // atile = FP[TW * TW], btile = FP[TW * TW]
   extern __shared__ FP bigarray[];
   FP *atile = &bigarray[0], *btile = &bigarray[TW * TW];
   int tx = threadIdx.x; int ty = threadIdx.y;
   int row = ty + TW * blockIdx.y;
 
+  // Swap NTB for-loop to avoid allocating cvalue[]
   for (int kt = 0; kt < NTB; kt++) {
     FP cvalue = 0.;
     int col = tx + TW * (blockIdx.x * NTB + kt);
     for (int k = 0; k < (TW + p - 1)/TW; k++) {
+      // Load atile and btile
       atile[ty * TW + tx] = (k*TW + tx < p && row < n) ? a[row*p + k*TW + tx] : 0.;
       btile[ty * TW + tx] = (k*TW + ty < p && col < m) ? b[(k*TW + ty)*m + col] : 0.;
       __syncthreads();
       for (int i = 0; i < TW; ++i) cvalue += atile[ty * TW + i] * btile[i * TW + tx];
       __syncthreads();
     }
+    // Update to cvalue
     if (row < n && col < m) c[row * m + col] = cvalue;
   }
 
@@ -114,7 +70,7 @@ int main(int argc, char *argv[]) {
   int n, m, p; // matrix dimension
   FP *a,*b,*c;
   FP *dev_a, *dev_b, *dev_c;
-  size_t size_a, size_b, size_c;
+  size_t size_a, size_b, size_c; // Use size_t to avoid overflow
 
   cudaEvent_t start, stop; // using cuda events to measure time
   float elapsed_time_ms; // which is applicable for asynchronous code also
@@ -148,13 +104,10 @@ int main(int argc, char *argv[]) {
     exit (-1);
   }
 
-  int Grid_Dim_X = (int) ceil((double) m / Block_Dim);
-  Grid_Dim_X = (int) ceil((double) Grid_Dim_X / NTB);
-  //Grid_Dim_m = (m - 1) / Block_Dim + 1;
+  // Calculate Grid Size
   Grid_Dim_m = ((m - 1) / Block_Dim + NTB) / NTB;
   Grid_Dim_n = (n - 1) / Block_Dim + 1;
-  printf("1st Dim_x = %d, 2st Dim_x = %d\n", Grid_Dim_X, Grid_Dim_m);
-  printf("1st Dim_y = %d, 2st Dim_y = %d\n", (int) ceil((double) n / Block_Dim), Grid_Dim_n);
+
   cudaSetDevice(gpunum);
   printf("Using device %d\n",gpunum);
   
@@ -170,9 +123,9 @@ int main(int argc, char *argv[]) {
   a = (FP *) malloc(size_a); // dynamically allocated memory for arrays on host
   b = (FP *) malloc(size_b);
   c = (FP *) malloc(size_c); // results from GPU
-  printf("size_a = %zu\n", size_a);
-  printf("size_b = %zu\n", size_b);
-  printf("size_c = %zu\n", size_c);
+  // printf("size_a = %zu\n", size_a);
+  // printf("size_b = %zu\n", size_b);
+  // printf("size_c = %zu\n", size_c);
 
   srand(12345);
   // int p = n; //Used here only to illustrate proper initialization for non-square case

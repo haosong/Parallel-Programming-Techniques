@@ -6,6 +6,7 @@
 #include "timing.h"
 
 void cpu_matrixmult(FP *a, FP *b, FP *c, int n, int m, int p) {
+    // Same as matrix_multiplication.pdf Page 8, Matrix Multiplication (kij)
     for (int k = 0; k < p; k++) {
         for (int i = 0; i < n; i++) {
             FP r = a[i * p + k];
@@ -57,7 +58,7 @@ int main(int argc, char *argv[]) {
     cpu_matrixmult(a, b, c, n, m, p); // do calculation on host (NOTE: This computes the diff with GPU result.)
     timing(&wce, &ct);
 
-    printf("Time to calculate results on CPU: %f s.\n", wce - wcs); // exec. time
+    printf("Time to calculate results on CPU: %f ms.\n", (wce - wcs) * 1000); // exec. time
 
     // -------------- clean up ---------------------------------------
     free(a);

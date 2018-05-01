@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+// Output GPU Error Msg
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true) {
   if (code != cudaSuccess)  {
@@ -15,9 +16,10 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 }
 
 __global__ void gpu_matrixmult(FP* a, FP* b, FP* c, int n, int m, int p, int TW) {
+  // atile = FP[TW * TW], btile = FP[TW * TW]
   extern __shared__ FP bigarray[];
   FP *atile = &bigarray[0], *btile = &bigarray[TW * TW];
-  //__shared__ FP atile[TW][TW], btile[TW][TW];
+  //__shared__ FP atile[TW][TW], btile[TW][TW]; // Not using dynamical allocation
   int tx = threadIdx.x; int ty = threadIdx.y; FP cvalue = 0;
   int col = blockIdx.x*TW + tx;
   int row = blockIdx.y*TW + ty;
@@ -29,9 +31,8 @@ __global__ void gpu_matrixmult(FP* a, FP* b, FP* c, int n, int m, int p, int TW)
     for (int n = 0; n < TW; ++n) cvalue += atile[ty * TW + n] * btile[n * TW + tx];
     __syncthreads();
   }
-  
+  // Update to cvalue
   if (row < n && col < m) c[row * m + col] = cvalue;
-
 }
 
 void cpu_matrixmult(FP *a,FP *b, FP *c, int n, int m, int p) {
@@ -62,7 +63,7 @@ int main(int argc, char *argv[]) {
   int n, m, p; // matrix dimension
   FP *a,*b,*c;
   FP *dev_a, *dev_b, *dev_c;
-  size_t size_a, size_b, size_c;
+  size_t size_a, size_b, size_c; // Use size_t to avoid overflow
 
   cudaEvent_t start, stop; // using cuda events to measure time
   float elapsed_time_ms; // which is applicable for asynchronous code also
@@ -89,12 +90,13 @@ int main(int argc, char *argv[]) {
   p = atoi(argv[3]);
 
   Block_Dim = atoi(argv[4]); // Square block
-  int TW = Block_Dim;
+  int TW = Block_Dim; // TW is the same as Block Dim
   if (Block_Dim*Block_Dim > 1024) {
     printf("Error, too many threads in block\n");
     exit (-1);
   }
 
+  // Calculate Grid Size
   Grid_Dim_m = (m - 1) / Block_Dim + 1;
   Grid_Dim_n = (n - 1) / Block_Dim + 1;
 
@@ -113,9 +115,9 @@ int main(int argc, char *argv[]) {
   a = (FP *) malloc(size_a); // dynamically allocated memory for arrays on host
   b = (FP *) malloc(size_b);
   c = (FP *) malloc(size_c); // results from GPU
-  printf("size_a = %zu\n", size_a);
-  printf("size_b = %zu\n", size_b);
-  printf("size_c = %zu\n", size_c);
+  // printf("size_a = %zu\n", size_a);
+  // printf("size_b = %zu\n", size_b);
+  // printf("size_c = %zu\n", size_c);
 
   srand(12345);
   // int p = n; //Used here only to illustrate proper initialization for non-square case
